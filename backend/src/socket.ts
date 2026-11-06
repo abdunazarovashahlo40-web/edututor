@@ -2,7 +2,7 @@ import type { Server as HttpServer } from 'http';
 import { Server } from 'socket.io';
 import { env } from './config/env';
 import { prisma } from './lib/prisma';
-import { setIO } from './lib/realtime';
+import { markOffline, markOnline, setIO } from './lib/realtime';
 import { ACCESS_COOKIE, verifyAccess } from './middleware/auth';
 import { authorizeRoomKey } from './modules/meetings/meetings.service';
 
@@ -19,6 +19,26 @@ function parseCookies(header?: string) {
     if (i > 0) out[p.slice(0, i).trim()] = decodeURIComponent(p.slice(i + 1).trim());
   });
   return out;
+}
+
+/* -------- Interaktiv doska (whiteboard): xona bo'yicha chiziqlar xotirada saqlanadi -------- */
+type Stroke = { id: string; color: string; size: number; erase: boolean; points: [number, number][] };
+const boards = new Map<string, Stroke[]>();
+const MAX_STROKES = 3000;
+
+function cleanStroke(raw: unknown): Stroke | null {
+  const r = raw as Partial<Stroke> | null;
+  if (!r || !Array.isArray(r.points) || r.points.length < 1 || r.points.length > 2000) return null;
+  const points: [number, number][] = [];
+  for (const p of r.points) {
+    if (!Array.isArray(p) || p.length !== 2) return null;
+    const [x, y] = p.map(Number);
+    if (!Number.isFinite(x) || !Number.isFinite(y) || x < -0.1 || x > 1.1 || y < -0.1 || y > 1.1) return null;
+    points.push([Math.round(x * 10000) / 10000, Math.round(y * 10000) / 10000]);
+  }
+  const color = typeof r.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(r.color) ? r.color : '#111827';
+  const size = Math.min(40, Math.max(1, Number(r.size) || 3));
+  return { id: String(r.id ?? '').slice(0, 40), color, size, erase: !!r.erase, points };
 }
 
 /**
@@ -52,6 +72,8 @@ export function createSocket(server: HttpServer) {
   io.on('connection', (socket) => {
     const user = socket.data.user as SocketUser;
     socket.join(`user:${user.id}`);
+    markOnline(user.id);
+    socket.on('disconnect', () => markOffline(user.id));
 
     /* -------- Chat: yozayapti indikatori -------- */
     socket.on('chat:typing', async ({ conversationId }: { conversationId: string }) => {
@@ -73,6 +95,7 @@ export function createSocket(server: HttpServer) {
         }));
         if (peers.length >= 8) return ack?.({ ok: false, error: 'ROOM_FULL' });
         socket.data.room = room;
+        socket.data.isTeacher = a.isTeacher;
         socket.data.media = { audio: true, video: true };
         await socket.join(room);
         socket.to(room).emit('room:peer-joined', { socketId: socket.id, user, media: socket.data.media });
@@ -109,12 +132,41 @@ export function createSocket(server: HttpServer) {
       io.to(room).emit('room:chat', { from: user, text: text.slice(0, 500), at: Date.now() });
     });
 
-    const leave = () => {
+    /* -------- Doska -------- */
+    socket.on('wb:state', (ack?: (r: unknown) => void) => {
+      const room = socket.data.room as string | undefined;
+      if (!room || typeof ack !== 'function') return;
+      ack({ strokes: boards.get(room) ?? [] });
+    });
+
+    socket.on('wb:stroke', (raw: unknown) => {
+      const room = socket.data.room as string | undefined;
+      if (!room) return;
+      const st = cleanStroke(raw);
+      if (!st) return;
+      const list = boards.get(room) ?? [];
+      list.push(st);
+      if (list.length > MAX_STROKES) list.splice(0, list.length - MAX_STROKES);
+      boards.set(room, list);
+      socket.to(room).emit('wb:stroke', st);
+    });
+
+    socket.on('wb:clear', () => {
+      const room = socket.data.room as string | undefined;
+      if (!room || !socket.data.isTeacher) return; // doskani faqat o'qituvchi tozalaydi
+      boards.delete(room);
+      io.to(room).emit('wb:clear');
+    });
+
+    const leave = async () => {
       const room = socket.data.room as string | undefined;
       if (!room) return;
       socket.to(room).emit('room:peer-left', { socketId: socket.id });
       socket.leave(room);
       socket.data.room = undefined;
+      // Xonada hech kim qolmasa — doska xotirasini bo'shatamiz
+      const left = await io.in(room).fetchSockets();
+      if (!left.length) boards.delete(room);
     };
     socket.on('room:leave', leave);
     socket.on('disconnect', leave);

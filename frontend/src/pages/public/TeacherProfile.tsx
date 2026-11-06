@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { Award, BadgeCheck, Briefcase, CalendarDays, Clock, GraduationCap, Heart, Languages, MapPin, MessageCircle, Star, Users, Video } from 'lucide-react';
+import { Award, BadgeCheck, Briefcase, CalendarDays, Clock, GraduationCap, Heart, Languages, MapPin, MessageCircle, ShieldCheck, Star, Users, Video } from 'lucide-react';
 import { get, post } from '../../services/api';
 import { useI18n, subjectName } from '../../i18n';
 import { Avatar, Badge, Button, Card, ErrorState, FullPageSpinner, Stars } from '../../components/ui';
@@ -55,6 +55,11 @@ export default function TeacherProfile() {
                       {d.verification === 'APPROVED' && <BadgeCheck className="h-6 w-6 text-accent" aria-label="verified" />}
                     </h1>
                     <p className="mt-1 text-muted">{d.headline}</p>
+                    {d.online && (
+                      <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-700">
+                        <span className="h-2 w-2 rounded-full bg-emerald-500" /> {t('search.onlineNow')}
+                      </span>
+                    )}
                   </div>
                   <div className="flex gap-2">
                     {me?.role === 'STUDENT' && (
@@ -182,6 +187,11 @@ export default function TeacherProfile() {
             <div className="text-3xl font-extrabold">{money(d.hourlyPrice, locale)}</div>
             <div className="text-sm text-muted">{t('common.perHour')}</div>
             {d.trialPrice && Number(d.trialPrice) > 0 && <Badge tone="green" className="mt-2">{t('lesson.types.TRIAL')}: {money(d.trialPrice, locale)}</Badge>}
+            {d.lessons.some((l: any) => l.type === 'TRIAL') && (
+              <p className="mt-3 flex items-start gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">
+                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" /> {t('booking.guaranteeBadge')}
+              </p>
+            )}
             <Button size="lg" className="mt-5 w-full" onClick={() => setBook({ open: true })} icon={<CalendarDays className="h-4 w-4" />} disabled={!d.lessons.length}>
               {t('booking.book')}
             </Button>

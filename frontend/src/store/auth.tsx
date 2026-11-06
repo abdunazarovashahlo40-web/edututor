@@ -60,6 +60,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [me?.id, me?.appLock.locked, qc]);
 
+  // Ilova qulfi o'rnatilgan qurilma id'sini eslab qolamiz (qayta login'da PIN saqlanishi uchun)
+  useEffect(() => {
+    if (!me?.appLock.hasPin || !me.appLock.deviceId) return;
+    try {
+      localStorage.setItem('et_device', me.appLock.deviceId);
+    } catch {
+      /* ignore */
+    }
+  }, [me?.appLock.hasPin, me?.appLock.deviceId]);
+
   useEffect(() => {
     if (me?.locale) setLocale(me.locale);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -70,6 +80,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     disconnectSocket();
     qc.clear();
     qc.setQueryData(['me'], null);
+    // To'liq qayta yuklash: xotiradagi holat, ochiq so'rovlar va parallel token yangilash
+    // jarayoni qolib ketib, foydalanuvchini yana "kiritib qo'ymasligi" uchun.
+    window.location.replace('/login');
   }, [qc]);
 
   return <Ctx.Provider value={{ me, loading: q.isLoading, setMe, refetch: q.refetch, logout }}>{children}</Ctx.Provider>;

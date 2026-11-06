@@ -51,7 +51,7 @@ const en: Dict = {
   },
   auth: {
     pullCord: 'Pull the cord to turn on the light', lightColor: 'Light color', loginTitle: 'Log in', loginSubtitle: 'Your lessons are waiting',
-    emailOrPhone: 'Email or phone', phone: 'Phone number', email: 'Email', password: 'Password', confirmPassword: 'Confirm password',
+    phoneInvalid: 'Phone number must have 9 digits', emailOrPhone: 'Email or phone', phone: 'Phone number', email: 'Email', password: 'Password', confirmPassword: 'Confirm password',
     remember: 'Remember me', forgot: 'Forgot password?', login: 'Log in', or: 'or', google: 'With Google', telegram: 'With Telegram',
     noAccount: 'No account yet?', haveAccount: 'Already have an account?', registerTitle: 'How do you want to join?',
     student: 'Student', studentDesc: 'Learn, book lessons and track your results',
@@ -64,6 +64,7 @@ const en: Dict = {
     invalidEmail: 'Invalid email', passwordsMismatch: 'Passwords don\'t match', mustAccept: 'Please accept the terms',
   },
   lock: {
+    installHint: "To make it work like a banking app, install the site on your phone: browser menu → “Add to Home screen”. The app will then ask for your PIN or fingerprint every time it opens.",
     title: 'Enter your passcode', setupTitle: 'Set a passcode', setupText: 'This 4-digit code will be asked each time you open the app — just like banking apps.',
     repeat: 'Repeat the code', mismatch: 'Codes don\'t match', useBiometric: 'Unlock with fingerprint', enableBiometric: 'Enable fingerprint / Face ID',
     biometricText: 'Next time, open the app with your fingerprint.', skip: 'Later', otherAccount: 'Use another account',
@@ -96,6 +97,7 @@ const en: Dict = {
     upcomingDates: 'Upcoming dates', seats: 'seats', minutes: 'minutes',
   },
   booking: {
+    summaryTitle: "Lesson summary", summaryWrite: "Write summary", summaryEdit: "Edit summary", summaryHint: "Briefly: what you covered, what went well, homework and the plan for next lesson. The student (and their parents) will see it.", summaryPlaceholder: "E.g.: Quadratic equations — discriminant. Good: applies the formula quickly. Homework: #12–20. Next: Vieta’s theorem.", guarantee: "Trial lesson guarantee", guaranteeText: "Didn't like the trial lesson? Get a full refund within 24 hours after it ends. The guarantee can be used once.", guaranteeDone: "Payment refunded. Try another tutor!", guaranteeBadge: "Trial lesson guarantee: not a fit — full refund within 24 hours",
     statuses: { requested: 'Requested', confirmed: 'Confirmed', rejected: 'Rejected', cancelled: 'Cancelled', rescheduled: 'Rescheduled', completed: 'Completed', no_show: 'No-show' },
     book: 'Book a lesson', chooseLesson: 'Choose lesson type', chooseDate: 'Choose a day', chooseTime: 'Choose a time', chooseSession: 'Choose a group date',
     noSlots: 'No free time on this day', note: 'Note for the teacher (goal, level)', confirmBook: 'Book', payNow: 'Pay',
@@ -135,6 +137,7 @@ const en: Dict = {
   },
   review: { title: 'Rate the lesson', comment: 'Your feedback', verified: 'Verified lesson', report: 'Report', thanks: 'Thanks! Your rating was saved.' },
   search: {
+    onlineNow: "Online now",
     title: 'Tutors', found: '{n} teachers found', sort: 'Sort', sortRating: 'Top rated', sortPriceAsc: 'Cheapest', sortPriceDesc: 'Most expensive',
     sortExperience: 'Experience', sortNewest: 'Newest', sortPopular: 'Popular', minRating: 'Min. rating', experience: 'Experience', language: 'Language', format: 'Format',
     weekday: 'Free day', any: 'Any', noResults: 'No one found. Try changing filters.', viewProfile: 'Profile', book: 'Book',
@@ -142,6 +145,7 @@ const en: Dict = {
     allReviews: 'Reviews', noReviews: 'No reviews yet', from: 'from', favorite: 'Favorite', write: 'Message',
   },
   room: {
+    whiteboard: "Whiteboard", pen: "Pen", eraser: "Eraser", thickness: "Thickness", clearBoard: "Clear", lowBw: "Slow internet", lowBwOn: "Slow internet mode on: lower video quality, audio first", lowBwOff: "Normal quality restored",
     waiting: 'Waiting for other participants...', mic: 'Microphone', cam: 'Camera', screen: 'Share screen', leave: 'Leave', participants: 'Participants',
     chat: 'Chat', start: 'Start lesson', end: 'End lesson', connecting: 'Connecting...', connected: 'Connected', failed: 'Connection lost',
     permission: 'Camera or microphone access denied. Check browser settings.', closed: 'The room opens 15 minutes before the lesson',
@@ -160,6 +164,9 @@ const en: Dict = {
     hold: 'Earning hold (hours)', minPayout: 'Minimum payout (UZS)', refunds: 'Refunds', payouts: 'Payout requests', markPaid: 'Paid',
     reported: 'Reported', resolve: 'Resolved', inReview: 'In review', actor: 'Actor', action: 'Action', entity: 'Entity', docs: 'Documents',
     newSubject: 'New subject', openComplaints: 'Open complaints',
+  },
+  parent: {
+    title: "Parent report", readonly: "View-only link — the student can turn it off at any time", notFound: "Link not found", notFoundText: "The link was removed or renewed. Ask your child for a new one.", upcoming: "Upcoming lessons", noUpcoming: "No lessons scheduled", noLessons: "No completed lessons yet", recent: "Recent lessons and tutor summaries", attended: "Attended", missed: "Missed", cardTitle: "Share with parents", cardText: "A special link for parents to see lessons, homework and tutor summaries. Payments and messages are not shown.", create: "Create link", copy: "Copy", copied: "Link copied", shareText: "My learning results on EduTutor", renew: "Renew", renewed: "New link created, the old one no longer works", revoke: "Remove", revoked: "Link removed",
   },
   errors: {
     INVALID_CREDENTIALS: 'Wrong login or password', EMAIL_NOT_VERIFIED: 'Email not verified', SLOT_TAKEN: 'This time is already taken — pick another',

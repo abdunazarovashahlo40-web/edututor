@@ -5,6 +5,8 @@ import { Camera, Fingerprint, KeyRound, LogOut, Monitor, ShieldCheck, Smartphone
 import { del, get, patch, post, upload } from '../../services/api';
 import { useI18n, LOCALES, type Locale } from '../../i18n';
 import { useAuth } from '../../store/auth';
+import { InstallButton } from '../../layouts/PublicLayout';
+import { isStandalone } from '../../hooks/useMedia';
 import { Avatar, Badge, Button, Card, Field, Input, Modal, PageHeader, Select, Textarea } from '../../components/ui';
 import { SetupAppLock } from '../../features/applock/AppLock';
 import { biometricAvailable, registerBiometric } from '../../features/applock/biometric';
@@ -130,6 +132,12 @@ export default function Settings() {
           ))}
           {me.appLock.hasPin && <Button variant="ghost" onClick={async () => { await post('/auth/app-lock/disable'); await refetch(); }}>{t('lock.disable')}</Button>}
         </div>
+        {!isStandalone() && (
+          <div className="mt-4 flex flex-col gap-2 rounded-xl bg-brand-50/70 px-3 py-2.5 text-xs font-semibold text-brand-800 sm:flex-row sm:items-center">
+            <span className="flex-1">{t('lock.installHint')}</span>
+            <InstallButton />
+          </div>
+        )}
       </Card>
 
       <Card>

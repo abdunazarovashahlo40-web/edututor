@@ -10,6 +10,7 @@ import { saveFile } from '../../lib/storage';
 import { computeSlots, utcToLocalParts } from '../../common/time';
 import { audit } from '../../lib/audit';
 import { notify } from '../../lib/notify';
+import { isOnline, onlineUserIds } from '../../lib/realtime';
 import { getTeacherId } from '../../common/owners';
 
 export const teachersRouter = Router();
@@ -24,6 +25,7 @@ const listQuery = z.object({
   language: z.enum(['uz', 'ru', 'en']).optional(),
   format: z.enum(['online', 'offline']).optional(),
   weekday: z.coerce.number().int().min(0).max(6).optional(),
+  online: z.enum(['1', 'true']).optional(),
   sort: z.enum(['rating', 'price_asc', 'price_desc', 'experience', 'newest', 'popular']).default('rating'),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(48).default(12),
@@ -92,6 +94,7 @@ teachersRouter.get(
     if (f.format === 'online') and.push({ onlineFormat: true });
     if (f.format === 'offline') and.push({ offlineFormat: true });
     if (f.weekday !== undefined) and.push({ availability: { some: { weekday: f.weekday } } });
+    if (f.online) and.push({ userId: { in: onlineUserIds() } });
 
     const orderBy: Prisma.TeacherProfileOrderByWithRelationInput[] = {
       rating: [{ ratingAvg: 'desc' as const }, { ratingCount: 'desc' as const }],
@@ -114,7 +117,7 @@ teachersRouter.get(
       });
       favs = new Set(rows.map((r) => r.teacherId));
     }
-    ok(res, items.map((t) => ({ ...t, isFavorite: favs.has(t.id) })), pageMeta(f.page, f.limit, total));
+    ok(res, items.map((t) => ({ ...t, isFavorite: favs.has(t.id), online: isOnline(t.user.id) })), pageMeta(f.page, f.limit, total));
   }),
 );
 
@@ -370,6 +373,7 @@ teachersRouter.get(
     ok(res, {
       ...t,
       isFavorite,
+      online: isOnline(t.user.id),
       ratingBreakdown: [5, 4, 3, 2, 1].map((r) => ({ rating: r, count: ratingBreakdown.find((x) => x.rating === r)?._count._all ?? 0 })),
     });
   }),

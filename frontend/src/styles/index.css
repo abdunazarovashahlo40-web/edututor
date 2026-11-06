@@ -9,6 +9,11 @@
     text-rendering: optimizeLegibility;
   }
   :focus-visible { outline: none; }
+  /* Telefon: hech qachon gorizontal siljish bo'lmasin (sticky'ni buzmaydigan "clip") */
+  html, body { overflow-x: clip; }
+  /* Grid elementlari ichidagi uzun so'z/kontent ustunni ekrandan kengaytirib yubormasin */
+  .grid > * { min-width: 0; }
+  h1, h2, h3, p { overflow-wrap: break-word; }
   ::selection { background: #DDD6FE; color: #4C1D95; }
 }
 
@@ -47,7 +52,18 @@
     box-shadow: 0 0 0 4px rgb(var(--lamp) / .22), 0 0 24px rgb(var(--lamp) / .25);
     background: rgba(255,255,255,.1);
   }
-  .auth-input:-webkit-autofill { -webkit-text-fill-color: #fff; transition: background-color 9999s; }
+  /* Brauzer avtoto'ldirishi (autofill) maydonni oq qilib qo'ymasin */
+  .auth-stage input:-webkit-autofill,
+  .auth-stage input:-webkit-autofill:hover,
+  .auth-stage input:-webkit-autofill:focus,
+  .auth-stage input:-webkit-autofill:active {
+    -webkit-text-fill-color: #fff;
+    caret-color: #fff;
+    -webkit-box-shadow: 0 0 0 1000px #2a2350 inset;
+    box-shadow: 0 0 0 1000px #2a2350 inset;
+    transition: background-color 600000s 0s, color 600000s 0s;
+  }
+  .auth-stage input:autofill { -webkit-text-fill-color: #fff; box-shadow: 0 0 0 1000px #2a2350 inset; }
 }
 
 /* Past (noutbuk) ekranlarda forma butunlay sig'ishi uchun biroz kichraytiriladi */

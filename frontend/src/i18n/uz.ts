@@ -49,7 +49,7 @@ const uz = {
   },
   auth: {
     pullCord: 'Chiroqni yoqish uchun ipni torting', lightColor: 'Nur rangi', loginTitle: 'Tizimga kirish', loginSubtitle: 'Darslaringiz sizni kutmoqda',
-    emailOrPhone: 'Email yoki telefon', phone: 'Telefon raqam', email: 'Email', password: 'Parol', confirmPassword: 'Parolni tasdiqlang',
+    phoneInvalid: "Telefon raqam 9 ta raqamdan iborat bo'lsin", emailOrPhone: 'Email yoki telefon', phone: 'Telefon raqam', email: 'Email', password: 'Parol', confirmPassword: 'Parolni tasdiqlang',
     remember: 'Meni eslab qol', forgot: 'Parolni unutdingizmi?', login: 'Kirish', or: 'yoki', google: 'Google orqali', telegram: 'Telegram orqali',
     noAccount: 'Hisobingiz yo\'qmi?', haveAccount: 'Hisobingiz bormi?', registerTitle: 'Kim sifatida ro\'yxatdan o\'tmoqchisiz?',
     student: 'O\'quvchi', studentDesc: 'Bilim oling, darslarga yoziling va natijangizni kuzating',
@@ -62,6 +62,7 @@ const uz = {
     invalidEmail: 'Email noto\'g\'ri', passwordsMismatch: 'Parollar mos emas', mustAccept: 'Shartlarga rozilik bering',
   },
   lock: {
+    installHint: "Bank ilovasi kabi ishlashi uchun saytni telefonga o'rnating: brauzer menyusi → «Bosh ekranga qo'shish». Keyin ilova har ochilganda PIN yoki barmoq izi so'raladi.",
     title: 'Kirish kodini kiriting', setupTitle: 'Kirish kodini o\'rnating', setupText: 'Ilovani har ochganda shu 4 xonali kod so\'raladi — xuddi bank ilovalaridagidek.',
     repeat: 'Kodni takrorlang', mismatch: 'Kodlar mos kelmadi', useBiometric: 'Barmoq izi bilan kirish', enableBiometric: 'Barmoq izi / Face ID ni yoqish',
     biometricText: 'Keyingi safar ilovani barmoq izingiz bilan ochasiz.', skip: 'Keyinroq', otherAccount: 'Boshqa hisob bilan kirish',
@@ -94,6 +95,7 @@ const uz = {
     upcomingDates: 'Yaqin sanalar', seats: 'joy', minutes: 'daqiqa',
   },
   booking: {
+    summaryTitle: "Dars xulosasi", summaryWrite: "Xulosa yozish", summaryEdit: "Xulosani tahrirlash", summaryHint: "Nima o'tildi, nimalar yaxshi chiqdi, uyga nima qilish kerak va keyingi darsda nima bo'ladi — qisqa yozing. O'quvchi (va ota-onasi) buni ko'radi.", summaryPlaceholder: "Masalan: Kvadrat tenglamalar — diskriminant. Yaxshi: formulani tez qo'llaydi. Uyga: 12–20-misollar. Keyingi dars: Viyet teoremasi.", guarantee: "Sinov darsi kafolati", guaranteeText: "Sinov darsi yoqmadimi? Dars tugaganidan keyin 24 soat ichida to'lovni to'liq qaytarib olishingiz mumkin. Kafolatdan bir marta foydalanish mumkin.", guaranteeDone: "To'lov qaytarildi. Boshqa o'qituvchini sinab ko'ring!", guaranteeBadge: "Sinov darsi kafolati: yoqmasa — 24 soat ichida pulingiz to'liq qaytariladi",
     statuses: { requested: 'So\'rov yuborildi', confirmed: 'Tasdiqlangan', rejected: 'Rad etilgan', cancelled: 'Bekor qilingan', rescheduled: 'Ko\'chirilgan', completed: 'Yakunlangan', no_show: 'Kelmadi' },
     book: 'Dars bron qilish', chooseLesson: 'Dars turini tanlang', chooseDate: 'Kunni tanlang', chooseTime: 'Vaqtni tanlang', chooseSession: 'Guruh sanasini tanlang',
     noSlots: 'Bu kunda bo\'sh vaqt yo\'q', note: 'O\'qituvchiga izoh (maqsadingiz, darajangiz)', confirmBook: 'Bron qilish', payNow: 'To\'lash',
@@ -133,6 +135,7 @@ const uz = {
   },
   review: { title: 'Darsni baholang', comment: 'Fikringiz', verified: 'Tasdiqlangan dars', report: 'Shikoyat qilish', thanks: 'Rahmat! Bahoyingiz qabul qilindi.' },
   search: {
+    onlineNow: "Hozir onlayn",
     title: 'Repetitorlar', found: '{n} ta o\'qituvchi topildi', sort: 'Saralash', sortRating: 'Reyting bo\'yicha', sortPriceAsc: 'Arzonroq', sortPriceDesc: 'Qimmatroq',
     sortExperience: 'Tajriba', sortNewest: 'Yangi', sortPopular: 'Mashhur', minRating: 'Min. reyting', experience: 'Tajriba', language: 'Til', format: 'Format',
     weekday: 'Bo\'sh kun', any: 'Istalgan', noResults: 'Hech kim topilmadi. Filtrlarni o\'zgartirib ko\'ring.', viewProfile: 'Profil', book: 'Bron qilish',
@@ -140,6 +143,7 @@ const uz = {
     allReviews: 'Sharhlar', noReviews: 'Hali sharh yo\'q', from: 'dan', favorite: 'Sevimlilarga', write: 'Xabar yozish',
   },
   room: {
+    whiteboard: "Doska", pen: "Qalam", eraser: "O'chirg'ich", thickness: "Qalinlik", clearBoard: "Tozalash", lowBw: "Sekin internet", lowBwOn: "Sekin internet rejimi yoqildi: video sifati pasaytirildi, ovoz ustuvor", lowBwOff: "Oddiy sifat qaytarildi",
     waiting: 'Boshqa ishtirokchilar kutilmoqda...', mic: 'Mikrofon', cam: 'Kamera', screen: 'Ekran ulashish', leave: 'Chiqish', participants: 'Ishtirokchilar',
     chat: 'Chat', start: 'Darsni boshlash', end: 'Darsni tugatish', connecting: 'Ulanmoqda...', connected: 'Ulangan', failed: 'Ulanish uzildi',
     permission: 'Kamera yoki mikrofonga ruxsat berilmadi. Brauzer sozlamalarini tekshiring.', closed: 'Xona darsdan 15 daqiqa oldin ochiladi',
@@ -158,6 +162,9 @@ const uz = {
     hold: 'Daromadni ushlab turish (soat)', minPayout: 'Minimal pul yechish (so\'m)', refunds: 'Qaytarishlar', payouts: 'Pul yechish so\'rovlari', markPaid: 'To\'landi',
     reported: 'Shikoyat qilinganlar', resolve: 'Hal qilindi', inReview: 'Ko\'rib chiqilmoqda', actor: 'Kim', action: 'Amal', entity: 'Obyekt', docs: 'Hujjatlar',
     newSubject: 'Yangi fan', openComplaints: 'Ochiq shikoyatlar',
+  },
+  parent: {
+    title: "Ota-ona uchun hisobot", readonly: "Faqat ko'rish uchun havola — o'quvchi uni istalgan vaqtda o'chira oladi", notFound: "Havola topilmadi", notFoundText: "Havola o'chirilgan yoki yangilangan. Farzandingizdan yangi havolani so'rang.", upcoming: "Yaqin darslar", noUpcoming: "Rejalashtirilgan dars yo'q", noLessons: "Hali yakunlangan darslar yo'q", recent: "So'nggi darslar va o'qituvchi xulosalari", attended: "Qatnashdi", missed: "Kelmadi", cardTitle: "Ota-onaga ulashish", cardText: "Ota-onangiz darslar, vazifalar va o'qituvchi xulosalarini ko'rishi uchun maxsus havola. To'lovlar va yozishmalar ko'rinmaydi.", create: "Havola yaratish", copy: "Nusxalash", copied: "Havola nusxalandi", shareText: "EduTutor'dagi o'qish natijalarim", renew: "Yangilash", renewed: "Yangi havola yaratildi, eskisi ishlamaydi", revoke: "O'chirish", revoked: "Havola o'chirildi",
   },
   errors: {
     INVALID_CREDENTIALS: 'Login yoki parol noto\'g\'ri', EMAIL_NOT_VERIFIED: 'Email tasdiqlanmagan', SLOT_TAKEN: 'Bu vaqt allaqachon band — boshqa vaqt tanlang',

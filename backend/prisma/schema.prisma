@@ -139,6 +139,7 @@ model User {
   emailVerifiedAt DateTime?
   googleId        String?     @unique
   telegramId      String?     @unique
+  parentShareToken String?    @unique // ota-ona uchun faqat o'qiladigan natijalar havolasi
   failedLogins    Int         @default(0)
   lockedUntil     DateTime?
   lastLoginAt     DateTime?
@@ -389,6 +390,7 @@ model Booking {
   cancelReason  String?
   cancelledById String?
   rescheduleFromId String?
+  lessonSummary String?        // o'qituvchining dars yakunidagi xulosasi va keyingi qadamlar
   confirmedAt   DateTime?
   cancelledAt   DateTime?
   completedAt   DateTime?

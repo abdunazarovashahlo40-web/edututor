@@ -7,7 +7,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Mic, MicOff, Video, VideoOff, MonitorUp, PhoneOff, Users, MessageSquare, Play, Square, Wifi, WifiOff, Loader2, X, Send, ExternalLink } from 'lucide-react';
+import { Mic, MicOff, Video, VideoOff, MonitorUp, PhoneOff, Users, MessageSquare, Play, Square, Wifi, WifiOff, Loader2, X, Send, ExternalLink, PenLine, Gauge } from 'lucide-react';
+import { Whiteboard } from './Whiteboard';
 import { ApiError, get, post } from '../../services/api';
 import { connectSocket } from '../../services/socket';
 import { useI18n } from '../../i18n';
@@ -43,6 +44,8 @@ export default function VideoRoom() {
   const [msg, setMsg] = useState('');
   const [status, setStatus] = useState<string>('scheduled');
   const [joinErr, setJoinErr] = useState<string | null>(null);
+  const [board, setBoard] = useState(false);
+  const [lowBw, setLowBw] = useState(false);
 
   const upsertRemote = useCallback((socketId: string, patch: Partial<Remote>) => {
     setRemotes((rs) => {
@@ -247,6 +250,33 @@ export default function VideoRoom() {
     });
   };
 
+  /** Sekin internet rejimi: kamera sifati va uzatish tezligi pasaytiriladi, ovoz ustuvor qoladi */
+  const toggleLowBandwidth = async () => {
+    const on = !lowBw;
+    setLowBw(on);
+    try {
+      await cameraTrack.current?.applyConstraints(
+        on ? { width: { ideal: 320 }, height: { ideal: 240 }, frameRate: { max: 12 } } : { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
+      );
+    } catch {
+      /* ba'zi qurilmalar qo'llab-quvvatlamaydi */
+    }
+    for (const { pc } of peers.current.values()) {
+      for (const sender of pc.getSenders()) {
+        if (sender.track?.kind !== 'video') continue;
+        const p = sender.getParameters();
+        if (!p.encodings?.length) p.encodings = [{}];
+        p.encodings[0].maxBitrate = on ? 150_000 : undefined;
+        try {
+          await sender.setParameters(p);
+        } catch {
+          /* e'tiborsiz */
+        }
+      }
+    }
+    toast('success', on ? t('room.lowBwOn') : t('room.lowBwOff'));
+  };
+
   const startLesson = async () => {
     try {
       await post(`/meetings/session/${sessionId}/start`);
@@ -304,6 +334,14 @@ export default function VideoRoom() {
           <div className="truncate font-bold">{d.lesson.title}</div>
           <div className="text-xs text-white/60">{dateTime(d.startAt, locale)} – {time(d.endAt)} · {status === 'in_progress' ? <span className="text-green-400">● LIVE</span> : t(`lesson.statuses.${status}`)}</div>
         </div>
+        <button
+          onClick={toggleLowBandwidth}
+          className={cn('flex h-9 items-center gap-1.5 rounded-xl px-2.5 text-xs font-bold transition', lowBw ? 'bg-amber-400 text-navy-900' : 'bg-white/10 text-white/80 hover:bg-white/20')}
+          title={t('room.lowBw')}
+          aria-pressed={lowBw}
+        >
+          <Gauge className="h-4 w-4" /> <span className="hidden sm:inline">{t('room.lowBw')}</span>
+        </button>
         {d.isTeacher && (status === 'in_progress' ? (
           <Button size="sm" variant="danger" icon={<Square className="h-4 w-4" />} onClick={endLesson}>{t('room.end')}</Button>
         ) : (
@@ -331,6 +369,7 @@ export default function VideoRoom() {
             {tiles.map((r) => <RemoteTile key={r.socketId} r={r} />)}
           </div>
         )}
+        {board && joined && <div className="absolute inset-x-3 bottom-28 top-0 md:inset-x-4"><Whiteboard isTeacher={!!d.isTeacher} onClose={() => setBoard(false)} /></div>}
         {/* o'z videom (PiP) */}
         <motion.div drag dragMomentum={false} className="absolute bottom-32 right-4 z-10 h-36 w-28 cursor-move overflow-hidden rounded-2xl border-2 border-white/30 bg-navy-800 shadow-2xl md:bottom-28 md:h-40 md:w-60">
           <video ref={localRef} autoPlay playsInline muted className={cn('h-full w-full object-cover', !media.screen && '-scale-x-100', !media.video && !media.screen && 'hidden')} />
@@ -342,13 +381,14 @@ export default function VideoRoom() {
 
       {/* boshqaruv paneli */}
       <div className="safe-bottom absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/80 to-transparent px-4 pt-6">
-        <div className="mx-auto flex max-w-md items-center justify-center gap-3">
+        <div className="mx-auto flex max-w-lg items-center justify-center gap-1.5 md:gap-3">
           <Ctrl on={media.audio} onClick={toggleAudio} label={t('room.mic')} icon={media.audio ? Mic : MicOff} />
           <Ctrl on={media.video} onClick={toggleVideo} label={t('room.cam')} icon={media.video ? Video : VideoOff} />
           {'getDisplayMedia' in (navigator.mediaDevices ?? {}) && <Ctrl on={!media.screen} onClick={toggleScreen} label={t('room.screen')} icon={MonitorUp} active={media.screen} />}
+          <Ctrl on={!board} onClick={() => setBoard((b) => !b)} label={t('room.whiteboard')} icon={PenLine} active={board} />
           <Ctrl on onClick={() => setPanel(panel === 'people' ? null : 'people')} label={t('room.participants')} icon={Users} badge={tiles.length + 1} />
           <Ctrl on onClick={() => setPanel(panel === 'chat' ? null : 'chat')} label={t('room.chat')} icon={MessageSquare} badge={chat.length || undefined} />
-          <button onClick={() => nav(-1)} className="grid h-14 w-14 place-items-center rounded-full bg-red-500 shadow-lg active:scale-95" aria-label={t('room.leave')}><PhoneOff className="h-6 w-6" /></button>
+          <button onClick={() => nav(-1)} className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-red-500 shadow-lg active:scale-95 md:h-14 md:w-14" aria-label={t('room.leave')}><PhoneOff className="h-6 w-6" /></button>
         </div>
       </div>
 
@@ -426,7 +466,7 @@ function RemoteTile({ r }: { r: Remote }) {
 
 function Ctrl({ on, onClick, label, icon: I, badge, active }: { on: boolean; onClick: () => void; label: string; icon: any; badge?: number; active?: boolean }) {
   return (
-    <button onClick={onClick} aria-label={label} title={label} className={cn('relative grid h-12 w-12 place-items-center rounded-full transition active:scale-95 md:h-14 md:w-14', active ? 'bg-brand-500' : on ? 'bg-white/15 hover:bg-white/25' : 'bg-white text-navy-900')}>
+    <button onClick={onClick} aria-label={label} title={label} className={cn('relative grid h-11 w-11 shrink-0 place-items-center rounded-full transition active:scale-95 md:h-14 md:w-14', active ? 'bg-brand-500' : on ? 'bg-white/15 hover:bg-white/25' : 'bg-white text-navy-900')}>
       <I className="h-5 w-5 md:h-6 md:w-6" />
       {badge ? <span className="absolute -right-0.5 -top-0.5 grid h-5 min-w-[20px] place-items-center rounded-full bg-brand-500 px-1 text-[10px] font-bold">{badge}</span> : null}
     </button>

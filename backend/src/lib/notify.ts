@@ -12,6 +12,8 @@ export type NotificationType =
   | 'booking.cancelled'
   | 'booking.rescheduled'
   | 'booking.completed'
+  | 'booking.summary'
+  | 'booking.guarantee'
   | 'lesson.reminder'
   | 'payment.paid'
   | 'payment.failed'

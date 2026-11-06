@@ -23,7 +23,11 @@ export default function LoginPage() {
   const [err, setErr] = useState<string | null>(null);
 
   const schema = z.object({
-    login: z.string({ required_error: t('common.required') }).min(5, t('common.required')),
+    login: z
+      .string({ required_error: t('common.required') })
+      .min(5, t('common.required'))
+      // telefon rejimida faqat 9 ta raqam (avtoto'ldirish harf qo'yib yuborsa ham ushlanadi)
+      .refine((v) => mode !== 'phone' || v.replace(/\D/g, '').replace(/^998/, '').length === 9, t('auth.phoneInvalid')),
     password: z.string({ required_error: t('common.required') }).min(1, t('common.required')),
     remember: z.boolean().default(true),
   });

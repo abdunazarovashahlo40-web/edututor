@@ -46,6 +46,14 @@ async function refresh() {
   return ok;
 }
 
+export function deviceId() {
+  try {
+    return localStorage.getItem('et_device');
+  } catch {
+    return null;
+  }
+}
+
 type Opts = { method?: string; body?: unknown; form?: FormData; query?: Record<string, unknown>; noRefresh?: boolean };
 
 export async function api<T = any>(path: string, opts: Opts = {}): Promise<ApiResult<T>> {
@@ -63,6 +71,11 @@ export async function api<T = any>(path: string, opts: Opts = {}): Promise<ApiRe
     headers['X-CSRF-Token'] = decodeURIComponent(readCookie('et_csrf') ?? '');
   }
   if (opts.body !== undefined) headers['Content-Type'] = 'application/json';
+  // Shu telefonda PIN o'rnatilgan bo'lsa — qayta kirishda ham ilova qulfi saqlanadi
+  if (path.startsWith('/auth/')) {
+    const dev = deviceId();
+    if (dev) headers['X-Device-Id'] = dev;
+  }
 
   let res: Response;
   try {

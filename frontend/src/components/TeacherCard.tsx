@@ -38,7 +38,12 @@ export function TeacherCard({ t: teacher, compact, index = 0 }: { t: T; compact?
         </button>
       )}
       <div className="flex items-start gap-3.5">
-        <Avatar name={teacher.user.fullName} src={teacher.user.avatarUrl} size={64} className="ring-4 ring-brand-50" />
+        <div className="relative shrink-0">
+          <Avatar name={teacher.user.fullName} src={teacher.user.avatarUrl} size={64} className="ring-4 ring-brand-50" />
+          {teacher.online && (
+            <span className="absolute bottom-0.5 right-0.5 h-4 w-4 rounded-full border-[3px] border-white bg-emerald-500" title={t('search.onlineNow')} aria-label={t('search.onlineNow')} />
+          )}
+        </div>
         <div className="min-w-0 flex-1 pr-8">
           <Link to={`/teachers/${teacher.id}`} className="block truncate text-[17px] font-extrabold text-ink hover:text-brand-700">
             {teacher.user.fullName}

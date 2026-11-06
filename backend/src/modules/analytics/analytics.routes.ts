@@ -31,64 +31,65 @@ function lastMonths(n: number) {
   return keys;
 }
 
-/** O'quvchi taraqqiyoti */
+/** O'quvchi natijalari (kabinet va ota-ona havolasi uchun umumiy) */
+export async function studentAnalytics(id: string) {
+  const [completed, upcoming, homework, submissions] = await Promise.all([
+    prisma.booking.findMany({
+      where: { studentId: id, status: 'completed' },
+      select: { completedAt: true, lesson: { select: { durationMin: true, subject: { select: { id: true, nameUz: true, nameRu: true, nameEn: true, slug: true } } } } },
+    }),
+    prisma.booking.count({ where: { studentId: id, status: { in: ['requested', 'confirmed'] }, session: { endAt: { gt: new Date() } } } }),
+    prisma.homework.groupBy({ by: ['status'], where: { studentId: id }, _count: { _all: true } }),
+    prisma.homeworkSubmission.findMany({
+      where: { studentId: id, score: { not: null } },
+      select: { score: true, homework: { select: { maxScore: true, session: { select: { lesson: { select: { subjectId: true } } } } } } },
+    }),
+  ]);
+  const hwTotal = homework.reduce((a, h) => a + h._count._all, 0);
+  const hwDone = homework.filter((h) => ['reviewed', 'completed'].includes(h.status)).reduce((a, h) => a + h._count._all, 0);
+  const scores = submissions.map((s) => (s.score! / s.homework.maxScore) * 100);
+  const avgScore = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
+
+  const bySubject = new Map<string, { subject: unknown; lessons: number; minutes: number; scores: number[] }>();
+  for (const b of completed) {
+    const s = b.lesson.subject;
+    const cur = bySubject.get(s.id) ?? { subject: s, lessons: 0, minutes: 0, scores: [] };
+    cur.lessons++;
+    cur.minutes += b.lesson.durationMin;
+    bySubject.set(s.id, cur);
+  }
+  for (const s of submissions) {
+    const sid = s.homework.session?.lesson.subjectId;
+    if (sid && bySubject.has(sid)) bySubject.get(sid)!.scores.push((s.score! / s.homework.maxScore) * 100);
+  }
+  const weeks = lastWeeks(8);
+  const weekly = weeks.map((w) => ({
+    week: w,
+    lessons: completed.filter((b) => b.completedAt && weekKey(b.completedAt) === w).length,
+  }));
+  // Progress: darslar soni (maqsad 20 dars) va vazifa natijalari kombinatsiyasi
+  const subjects = [...bySubject.values()].map((s) => {
+    const avg = s.scores.length ? s.scores.reduce((a, b) => a + b, 0) / s.scores.length : null;
+    const progress = Math.min(100, Math.round(Math.min(s.lessons / 20, 1) * 60 + (avg ?? 50) * 0.4));
+    return { subject: s.subject, lessons: s.lessons, hours: Math.round((s.minutes / 60) * 10) / 10, avgScore: avg ? Math.round(avg) : null, progress };
+  });
+  const overall = subjects.length ? Math.round(subjects.reduce((a, s) => a + s.progress, 0) / subjects.length) : 0;
+  return {
+    completedLessons: completed.length,
+    hours: Math.round((completed.reduce((a, b) => a + b.lesson.durationMin, 0) / 60) * 10) / 10,
+    upcoming,
+    homework: { total: hwTotal, done: hwDone, pending: hwTotal - hwDone },
+    avgScore,
+    overallProgress: overall,
+    subjects,
+    weekly,
+  };
+}
+
 analyticsRouter.get(
   '/student',
   requireRole('STUDENT'),
-  ah(async (req, res) => {
-    const id = req.user!.id;
-    const [completed, upcoming, homework, submissions] = await Promise.all([
-      prisma.booking.findMany({
-        where: { studentId: id, status: 'completed' },
-        select: { completedAt: true, lesson: { select: { durationMin: true, subject: { select: { id: true, nameUz: true, nameRu: true, nameEn: true, slug: true } } } } },
-      }),
-      prisma.booking.count({ where: { studentId: id, status: { in: ['requested', 'confirmed'] }, session: { endAt: { gt: new Date() } } } }),
-      prisma.homework.groupBy({ by: ['status'], where: { studentId: id }, _count: { _all: true } }),
-      prisma.homeworkSubmission.findMany({
-        where: { studentId: id, score: { not: null } },
-        select: { score: true, homework: { select: { maxScore: true, session: { select: { lesson: { select: { subjectId: true } } } } } } },
-      }),
-    ]);
-    const hwTotal = homework.reduce((a, h) => a + h._count._all, 0);
-    const hwDone = homework.filter((h) => ['reviewed', 'completed'].includes(h.status)).reduce((a, h) => a + h._count._all, 0);
-    const scores = submissions.map((s) => (s.score! / s.homework.maxScore) * 100);
-    const avgScore = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
-
-    const bySubject = new Map<string, { subject: unknown; lessons: number; minutes: number; scores: number[] }>();
-    for (const b of completed) {
-      const s = b.lesson.subject;
-      const cur = bySubject.get(s.id) ?? { subject: s, lessons: 0, minutes: 0, scores: [] };
-      cur.lessons++;
-      cur.minutes += b.lesson.durationMin;
-      bySubject.set(s.id, cur);
-    }
-    for (const s of submissions) {
-      const sid = s.homework.session?.lesson.subjectId;
-      if (sid && bySubject.has(sid)) bySubject.get(sid)!.scores.push((s.score! / s.homework.maxScore) * 100);
-    }
-    const weeks = lastWeeks(8);
-    const weekly = weeks.map((w) => ({
-      week: w,
-      lessons: completed.filter((b) => b.completedAt && weekKey(b.completedAt) === w).length,
-    }));
-    // Progress: darslar soni (maqsad 20 dars) va vazifa natijalari kombinatsiyasi
-    const subjects = [...bySubject.values()].map((s) => {
-      const avg = s.scores.length ? s.scores.reduce((a, b) => a + b, 0) / s.scores.length : null;
-      const progress = Math.min(100, Math.round(Math.min(s.lessons / 20, 1) * 60 + (avg ?? 50) * 0.4));
-      return { subject: s.subject, lessons: s.lessons, hours: Math.round((s.minutes / 60) * 10) / 10, avgScore: avg ? Math.round(avg) : null, progress };
-    });
-    const overall = subjects.length ? Math.round(subjects.reduce((a, s) => a + s.progress, 0) / subjects.length) : 0;
-    ok(res, {
-      completedLessons: completed.length,
-      hours: Math.round((completed.reduce((a, b) => a + b.lesson.durationMin, 0) / 60) * 10) / 10,
-      upcoming,
-      homework: { total: hwTotal, done: hwDone, pending: hwTotal - hwDone },
-      avgScore,
-      overallProgress: overall,
-      subjects,
-      weekly,
-    });
-  }),
+  ah(async (req, res) => ok(res, await studentAnalytics(req.user!.id))),
 );
 
 /** O'qituvchi analitikasi */

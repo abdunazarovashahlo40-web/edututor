@@ -5,6 +5,7 @@ import { get } from '../../services/api';
 import { useI18n, subjectName } from '../../i18n';
 import { Card, EmptyState, PageHeader, ProgressBar, ProgressRing, Skeleton, StatCard } from '../../components/ui';
 import { date } from '../../utils/format';
+import { ParentLinkCard } from '../../features/parent/ParentLinkCard';
 
 export default function Progress() {
   const { t, locale } = useI18n();
@@ -16,6 +17,7 @@ export default function Progress() {
   return (
     <div className="space-y-5">
       <PageHeader title={t('menu.progress')} />
+      <ParentLinkCard />
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <StatCard icon={<Trophy className="h-5 w-5" />} label={t('student.completedLessons')} value={d.completedLessons} />
         <StatCard icon={<Timer className="h-5 w-5" />} label={t('student.hours')} value={d.hours} tone="blue" />

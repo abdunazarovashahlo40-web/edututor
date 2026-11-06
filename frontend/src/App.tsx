@@ -11,6 +11,7 @@ const Landing = lazy(() => import('./pages/public/Landing'));
 const Teachers = lazy(() => import('./pages/public/Teachers'));
 const TeacherProfile = lazy(() => import('./pages/public/TeacherProfile'));
 const SandboxPay = lazy(() => import('./pages/public/SandboxPay'));
+const ParentReport = lazy(() => import('./pages/public/ParentReport'));
 const NotFound = lazy(() => import('./pages/public/NotFound'));
 const Login = lazy(() => import('./features/auth/LoginPage'));
 const Register = lazy(() => import('./features/auth/RegisterPage'));
@@ -69,6 +70,7 @@ export default function App() {
               <Route index element={<Landing />} />
               <Route path="teachers" element={<Teachers />} />
               <Route path="teachers/:id" element={<TeacherProfile />} />
+              <Route path="p/:token" element={<ParentReport />} />
               <Route path="pay/sandbox/:id" element={<RequireRole roles={['STUDENT']}><SandboxPay /></RequireRole>} />
             </Route>
 

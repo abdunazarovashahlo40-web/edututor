@@ -9,7 +9,7 @@ import { TeacherCard } from '../../components/TeacherCard';
 import type { Subject, TeacherCard as TC } from '../../types';
 import { cn } from '../../utils/cn';
 
-const KEYS = ['q', 'subject', 'minPrice', 'maxPrice', 'minRating', 'minExperience', 'language', 'format', 'weekday', 'sort', 'page'] as const;
+const KEYS = ['q', 'subject', 'minPrice', 'maxPrice', 'minRating', 'minExperience', 'language', 'format', 'weekday', 'online', 'sort', 'page'] as const;
 
 export default function Teachers() {
   const { t, locale, tr } = useI18n();
@@ -47,6 +47,13 @@ export default function Teachers() {
           ))}
         </div>
       </div>
+      <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-line/70 bg-white px-3.5 py-2.5">
+        <span className="flex items-center gap-2 text-sm font-bold text-ink">
+          <span className="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,.18)]" />
+          {t('search.onlineNow')}
+        </span>
+        <input type="checkbox" className="h-4 w-4 accent-brand-600" checked={f.online === '1'} onChange={(e) => set({ online: e.target.checked ? '1' : '' })} />
+      </label>
       <div>
         <p className="mb-2 text-xs font-bold uppercase tracking-wider text-muted">{t('landing.searchPrice')}</p>
         <div className="grid grid-cols-2 gap-2">

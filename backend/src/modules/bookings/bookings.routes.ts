@@ -7,7 +7,15 @@ import { forbidden, notFound } from '../../common/errors';
 import { requireAuth, requireRole } from '../../middleware/auth';
 import { getTeacherId } from '../../common/owners';
 import { audit } from '../../lib/audit';
-import { cancelBookingInternal, completeBooking, confirmBooking, createBooking, rescheduleBooking } from './bookings.service';
+import {
+  cancelBookingInternal,
+  claimTrialGuarantee,
+  completeBooking,
+  confirmBooking,
+  createBooking,
+  rescheduleBooking,
+  saveLessonSummary,
+} from './bookings.service';
 
 export const bookingsRouter = Router();
 bookingsRouter.use(requireAuth);
@@ -154,5 +162,25 @@ bookingsRouter.post(
   ah(async (req, res) => {
     await completeBooking(req.params.id, req.user!.id, true);
     ok(res, { noShow: true });
+  }),
+);
+
+bookingsRouter.post(
+  '/:id/summary',
+  requireRole('TEACHER'),
+  ah(async (req, res) => {
+    const { summary } = parse(z.object({ summary: z.string().trim().min(3).max(2000) }), req.body);
+    ok(res, await saveLessonSummary(req.params.id, req.user!.id, summary));
+  }),
+);
+
+bookingsRouter.post(
+  '/:id/guarantee',
+  requireRole('STUDENT'),
+  ah(async (req, res) => {
+    const { reason } = parse(z.object({ reason: z.string().trim().min(3).max(300) }), req.body);
+    const r = await claimTrialGuarantee(req.params.id, req.user!.id, reason);
+    await audit(req, 'booking.trial_guarantee', 'Booking', req.params.id, { reason });
+    ok(res, r);
   }),
 );

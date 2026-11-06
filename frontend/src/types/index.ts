@@ -43,6 +43,7 @@ export interface TeacherCard {
   subjects: { level?: string | null; subject: Subject }[];
   availability: { weekday: number; startMinute: number; endMinute: number }[];
   isFavorite?: boolean;
+  online?: boolean;
 }
 
 export interface Booking {
@@ -56,4 +57,6 @@ export interface Booking {
   student: { id: string; fullName: string; avatarUrl: string | null };
   payments: { id: string; status: string; amount: string; provider: string }[];
   review?: { id: string; rating: number } | null;
+  lessonSummary?: string | null;
+  completedAt?: string | null;
 }

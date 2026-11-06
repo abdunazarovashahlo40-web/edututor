@@ -2,7 +2,8 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../../lib/prisma';
 import { ah, ok, parse } from '../../common/http';
-import { requireAuth } from '../../middleware/auth';
+import { requireAuth, requireRole } from '../../middleware/auth';
+import { randomToken } from '../../common/crypto';
 import { assertSniff, uploadImage } from '../../middleware/upload';
 import { saveFile } from '../../lib/storage';
 import { normalizePhone } from '../auth/auth.service';
@@ -108,5 +109,35 @@ usersRouter.delete(
     ]);
     clearAuthCookies(res);
     ok(res, { deleted: true });
+  }),
+);
+
+/* ---------- Ota-ona uchun natijalar havolasi (faqat o'qish) ---------- */
+usersRouter.get(
+  '/me/parent-link',
+  requireRole('STUDENT'),
+  ah(async (req, res) => {
+    const u = await prisma.user.findUniqueOrThrow({ where: { id: req.user!.id }, select: { parentShareToken: true } });
+    ok(res, { token: u.parentShareToken });
+  }),
+);
+
+usersRouter.post(
+  '/me/parent-link',
+  requireRole('STUDENT'),
+  ah(async (req, res) => {
+    // Har safar yangi token: eski havola darhol ishlamay qoladi
+    const token = randomToken(18);
+    await prisma.user.update({ where: { id: req.user!.id }, data: { parentShareToken: token } });
+    ok(res, { token });
+  }),
+);
+
+usersRouter.delete(
+  '/me/parent-link',
+  requireRole('STUDENT'),
+  ah(async (req, res) => {
+    await prisma.user.update({ where: { id: req.user!.id }, data: { parentShareToken: null } });
+    ok(res, { token: null });
   }),
 );

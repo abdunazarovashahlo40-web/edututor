@@ -226,4 +226,45 @@ export async function completeBooking(bookingId: string, actorUserId: string | n
   }
 }
 
+/** O'qituvchi dars yakunida qisqa xulosa yozadi (nima o'tildi, uyga vazifa, keyingi qadam) */
+export async function saveLessonSummary(bookingId: string, teacherUserId: string, summary: string) {
+  const b = await loadForActor(bookingId);
+  if (b.teacher.userId !== teacherUserId) throw forbidden('NOT_OWNER');
+  if (!['completed', 'confirmed'].includes(b.status)) throw conflict('BOOKING_STATE', `Holat: ${b.status}`);
+  if (b.session.startAt > new Date()) throw badRequest('NOT_STARTED', 'Dars hali boshlanmagan');
+  const first = !b.lessonSummary;
+  const updated = await prisma.booking.update({ where: { id: b.id }, data: { lessonSummary: summary.trim() } });
+  if (first) {
+    await notify(b.studentId, 'booking.summary', 'O\'qituvchi dars xulosasini yozdi', b.lesson.title, '/student/lessons', { bookingId: b.id });
+  }
+  return updated;
+}
+
+export const GUARANTEE_HOURS = 24;
+
+/**
+ * Sinov darsi kafolati: sinov darsi yoqmasa, o'quvchi 24 soat ichida pulini to'liq qaytarib oladi.
+ * Har bir o'quvchi uchun bir marta. Daromad hali "held" (ushlab turilgan) bo'lgandagina ishlaydi.
+ */
+export async function claimTrialGuarantee(bookingId: string, studentId: string, reason: string) {
+  const b = await loadForActor(bookingId);
+  if (b.studentId !== studentId) throw forbidden('NOT_OWNER');
+  if (b.lesson.type !== 'TRIAL') throw badRequest('NOT_TRIAL', 'Kafolat faqat sinov darsiga amal qiladi');
+  if (b.status !== 'completed' || !b.completedAt) throw conflict('BOOKING_STATE', 'Dars hali yakunlanmagan');
+  if (Date.now() - b.completedAt.getTime() > GUARANTEE_HOURS * 3600_000) {
+    throw badRequest('GUARANTEE_EXPIRED', `Kafolat muddati (${GUARANTEE_HOURS} soat) o'tgan`);
+  }
+  const payment = await prisma.payment.findFirst({ where: { bookingId: b.id, status: 'paid' }, include: { earning: true } });
+  if (!payment) throw badRequest('NOTHING_TO_REFUND', 'Bu dars uchun to\'lov topilmadi');
+  if (payment.earning && payment.earning.status !== 'held') throw badRequest('GUARANTEE_EXPIRED', 'Kafolat muddati o\'tgan');
+  const used = await prisma.refund.count({ where: { requestedBy: studentId, reason: { startsWith: 'trial_guarantee' } } });
+  if (used) throw conflict('GUARANTEE_USED', 'Sinov darsi kafolatidan avval foydalangansiz');
+
+  await prisma.$transaction(async (tx) => {
+    await refundForBooking(tx, b.id, 100, studentId, `trial_guarantee: ${reason.slice(0, 250)}`);
+  }, TX_OPTS);
+  await notify(b.teacher.userId, 'booking.guarantee', 'Sinov darsi kafolati ishlatildi', `${b.lesson.title}: o'quvchi to'lovni qaytarib oldi`, '/teacher/bookings', { bookingId: b.id });
+  return { refunded: true };
+}
+
 export { markPaid };

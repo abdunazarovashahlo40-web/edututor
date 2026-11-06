@@ -3,7 +3,7 @@
  * Shiftdan osilgan chiroq soyabon o'rniga bitiruv shapkasi (mortarboard), ip uchida — kistochka.
  * Ipni torting (yoki bosing / Enter) → nur yonadi, shisha forma nur ichida paydo bo'ladi.
  */
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent, type ReactNode } from 'react';
 import { AnimatePresence, motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { Logo } from '../../components/Logo';
 import { LanguageSwitcher } from '../../components/LanguageSwitcher';
@@ -62,6 +62,40 @@ export function LampScene({ children, wide }: { children: ReactNode; wide?: bool
     animate(y, [0, 34, 0], { duration: 0.45, ease: 'easeOut' });
     setTimeout(toggle, 160);
   }, [toggle, y]);
+
+  /*
+   * Ipni tortish: Pointer Events (sichqoncha, barmoq, stilus — hammasi bir xil).
+   * Pastga 28px dan ko'p tortilsa — yoqiladi/o'chiriladi; deyarli qimirlamasa — oddiy bosish deb hisoblanadi.
+   */
+  const drag = useRef<{ id: number; startY: number; dy: number } | null>(null);
+  const onCordDown = (e: RPointerEvent) => {
+    e.preventDefault();
+    (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
+    drag.current = { id: e.pointerId, startY: e.clientY, dy: 0 };
+  };
+  const onCordMove = (e: RPointerEvent) => {
+    const d = drag.current;
+    if (!d || d.id !== e.pointerId) return;
+    d.dy = Math.max(0, e.clientY - d.startY);
+    y.set(Math.min(90, d.dy * 0.85)); // ip cho'ziladi, lekin chegarasi bor
+  };
+  const onCordUp = (e: RPointerEvent) => {
+    const d = drag.current;
+    if (!d || d.id !== e.pointerId) return;
+    drag.current = null;
+    if (d.dy > 28) {
+      animate(y, 0, { type: 'spring', stiffness: 500, damping: 18 });
+      toggle();
+    } else if (d.dy < 8) {
+      pull(); // oddiy bosish
+    } else {
+      animate(y, 0, { type: 'spring', stiffness: 500, damping: 18 });
+    }
+  };
+  const onCordCancel = () => {
+    drag.current = null;
+    animate(y, 0, { type: 'spring', stiffness: 500, damping: 18 });
+  };
 
   const cycleColor = () => {
     const keys = Object.keys(COLORS) as ColorKey[];
@@ -233,26 +267,24 @@ export function LampScene({ children, wide }: { children: ReactNode; wide?: bool
         <div className="absolute -left-[11px]" style={{ top: CORD_BASE - 4 }}>
         <motion.button
           type="button"
-          drag="y"
-          dragConstraints={{ top: 0, bottom: 0 }}
-          dragElastic={{ top: 0, bottom: 0.9 }}
-          dragSnapToOrigin
           style={{ y }}
-          onDragEnd={(_, info) => info.offset.y > 26 && toggle()}
-          onTap={pull}
+          onPointerDown={onCordDown}
+          onPointerMove={onCordMove}
+          onPointerUp={onCordUp}
+          onPointerCancel={onCordCancel}
           onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), pull())}
           aria-pressed={on}
           aria-label={t('auth.pullCord')}
-          className="relative block cursor-grab touch-none rounded-full outline-none focus-visible:ring-4 focus-visible:ring-amber-300/40 active:cursor-grabbing"
+          className="relative -m-4 block cursor-grab touch-none select-none rounded-full p-4 outline-none [-webkit-tap-highlight-color:transparent] focus-visible:ring-4 focus-visible:ring-amber-300/40 active:cursor-grabbing"
         >
-          <svg width="22" height="40" viewBox="0 0 22 40" aria-hidden>
+          <svg width="22" height="40" viewBox="0 0 22 40" aria-hidden className="pointer-events-none">
             <circle cx="11" cy="5" r="5" fill="#FBBF24" />
             <path d="M5 9 h12 l2 28 q-8 4 -16 0 z" fill="#F59E0B" />
             {[7, 10, 13, 16].map((x) => (
               <path key={x} d={`M${x} 12 L${x - 1} 36`} stroke="#B45309" strokeWidth=".8" opacity=".6" />
             ))}
           </svg>
-          {!on && <span className="absolute -inset-3 animate-ping rounded-full border border-amber-300/40" />}
+          {!on && <span className="pointer-events-none absolute inset-1 animate-ping rounded-full border border-amber-300/40" />}
         </motion.button>
         </div>
       </div>

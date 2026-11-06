@@ -77,7 +77,7 @@ export default function Landing() {
             <motion.span initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="inline-flex items-center gap-2 rounded-full border border-brand-200 bg-white px-3 py-1.5 text-xs font-bold text-brand-700 shadow-soft">
               <Sparkles className="h-3.5 w-3.5" /> {t('landing.badge')}
             </motion.span>
-            <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }} className="mt-5 text-[38px] font-extrabold leading-[1.08] tracking-tight text-ink sm:text-5xl lg:text-[58px]">
+            <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 }} className="mt-5 text-[clamp(28px,8.4vw,38px)] font-extrabold leading-[1.08] tracking-tight text-ink sm:text-5xl lg:text-[58px]">
               {t('landing.title1')} <span className="text-gradient">{t('landing.title2')}</span> {t('landing.title3')}
             </motion.h1>
             <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.16 }} className="mt-5 max-w-xl text-[17px] leading-relaxed text-muted">

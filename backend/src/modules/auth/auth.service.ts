@@ -26,6 +26,12 @@ const cookieBase = () => ({
 export async function issueSession(req: Request, res: Response, user: Pick<User, 'id' | 'role'>, remember: boolean) {
   const refresh = randomToken(48);
   const ttlMs = (remember ? 30 : 1) * 24 * 3600_000;
+  // Bank ilovalaridagidek: shu telefonda avval PIN o'rnatilgan bo'lsa, yangi kirishda ham u saqlanadi
+  const rawDevice = req.get('x-device-id');
+  const device =
+    rawDevice && rawDevice.length <= 40
+      ? await prisma.appDevice.findFirst({ where: { id: rawDevice, userId: user.id, pinHash: { not: null } }, select: { id: true } })
+      : null;
   const session = await prisma.authSession.create({
     data: {
       userId: user.id,
@@ -33,6 +39,7 @@ export async function issueSession(req: Request, res: Response, user: Pick<User,
       userAgent: req.get('user-agent')?.slice(0, 250),
       ip: req.ip,
       expiresAt: new Date(Date.now() + ttlMs),
+      deviceId: device?.id ?? null,
     },
   });
   setAuthCookies(res, user, session.id, refresh, remember ? ttlMs : undefined);

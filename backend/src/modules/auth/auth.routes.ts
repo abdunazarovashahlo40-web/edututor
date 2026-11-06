@@ -1,13 +1,14 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import { prisma } from '../../lib/prisma';
 import { env } from '../../config/env';
 import { ah, ok, parse } from '../../common/http';
 import { badRequest, forbidden, unauthorized } from '../../common/errors';
 import { randomToken, sha256 } from '../../common/crypto';
 import { authLimiter } from '../../middleware/security';
-import { REFRESH_COOKIE, requireAuth, requireAuthAllowLocked } from '../../middleware/auth';
+import { ACCESS_COOKIE, REFRESH_COOKIE, requireAuth, requireAuthAllowLocked } from '../../middleware/auth';
 import { audit } from '../../lib/audit';
 import {
   IDLE_LOCK_MIN,
@@ -188,9 +189,20 @@ authRouter.post(
 authRouter.post(
   '/logout',
   ah(async (req, res) => {
+    const now = new Date();
     const token = req.cookies?.[REFRESH_COOKIE] as string | undefined;
     if (token) {
-      await prisma.authSession.updateMany({ where: { refreshTokenHash: sha256(token) }, data: { revokedAt: new Date() } });
+      await prisma.authSession.updateMany({ where: { refreshTokenHash: sha256(token), revokedAt: null }, data: { revokedAt: now } });
+    }
+    // Access token muddati o'tgan bo'lsa ham undagi sessiya id orqali sessiyani yopamiz
+    const access = req.cookies?.[ACCESS_COOKIE] as string | undefined;
+    if (access) {
+      try {
+        const p = jwt.verify(access, env.JWT_ACCESS_SECRET, { issuer: 'edututor', ignoreExpiration: true }) as { sid?: string };
+        if (p.sid) await prisma.authSession.updateMany({ where: { id: p.sid, revokedAt: null }, data: { revokedAt: now } });
+      } catch {
+        /* imzosi noto'g'ri token — e'tiborsiz */
+      }
     }
     clearAuthCookies(res);
     ok(res, { loggedOut: true });

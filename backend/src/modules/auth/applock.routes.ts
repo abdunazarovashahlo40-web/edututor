@@ -124,8 +124,9 @@ appLockRouter.post(
       authenticatorSelection: {
         authenticatorAttachment: 'platform', // faqat qurilmaning o'zidagi sensor (barmoq izi / Face ID)
         userVerification: 'required',
-        residentKey: 'discouraged',
+        residentKey: 'discouraged', // parol menejeriga "passkey" bo'lib saqlanmaydi — telefonning ekran qulfi oynasi chiqadi
       },
+      preferredAuthenticatorType: 'localDevice', // QR-kod / boshqa telefon variantlarini ko'rsatmaslik
       excludeCredentials: device.credentialId ? [{ id: device.credentialId }] : [],
     });
     await prisma.appDevice.update({ where: { id: device.id }, data: { challenge: options.challenge } });
@@ -174,7 +175,7 @@ appLockRouter.post(
       allowCredentials: [{ id: device.credentialId, transports: device.transports as any }],
     });
     await prisma.appDevice.update({ where: { id: device.id }, data: { challenge: options.challenge } });
-    ok(res, options);
+    ok(res, { ...options, hints: ['client-device'] }); // brauzerga: faqat shu qurilmadagi sensor
   }),
 );
 

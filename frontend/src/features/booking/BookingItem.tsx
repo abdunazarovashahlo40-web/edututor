@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { CalendarClock, Check, Clock, CreditCard, MessageCircle, Star, Video, X, UserX } from 'lucide-react';
+import { CalendarClock, Check, Clock, CreditCard, MessageCircle, NotebookPen, ShieldCheck, Star, Video, X, UserX } from 'lucide-react';
 import { post } from '../../services/api';
 import { useI18n, subjectName } from '../../i18n';
 import { Avatar, Badge, Button, Field, Input, Modal, Stars, Textarea, statusTone } from '../../components/ui';
@@ -17,7 +17,8 @@ export function BookingItem({ b, as }: { b: Booking; as: 'student' | 'teacher' }
   const qc = useQueryClient();
   const toast = useToast();
   const nav = useNavigate();
-  const [modal, setModal] = useState<'cancel' | 'reschedule' | 'review' | 'reject' | null>(null);
+  const [modal, setModal] = useState<'cancel' | 'reschedule' | 'review' | 'reject' | 'summary' | 'guarantee' | null>(null);
+  const [summary, setSummary] = useState(b.lessonSummary ?? '');
   const [reason, setReason] = useState('');
   const [newTime, setNewTime] = useState('');
   const [rating, setRating] = useState(5);
@@ -31,6 +32,10 @@ export function BookingItem({ b, as }: { b: Booking; as: 'student' | 'teacher' }
   const now = Date.now();
   const canJoin = b.status === 'confirmed' && now > start.getTime() - 15 * 60_000 && now < end.getTime() + 30 * 60_000;
   const started = now > start.getTime();
+  // Sinov darsi kafolati: yakunlangandan keyin 24 soat ichida, to'langan bo'lsa
+  const guaranteeOpen =
+    as === 'student' && b.lesson.type === 'TRIAL' && b.status === 'completed' && paid && !!b.completedAt && now - new Date(b.completedAt).getTime() < 24 * 3600_000;
+  const canSummarize = as === 'teacher' && (b.status === 'completed' || (b.status === 'confirmed' && started));
   const other = as === 'student' ? { name: b.teacher.user.fullName, avatar: b.teacher.user.avatarUrl, id: b.teacher.user.id } : { name: b.student.fullName, avatar: b.student.avatarUrl, id: b.student.id };
 
   const act = async (fn: () => Promise<unknown>, ok?: string) => {
@@ -76,6 +81,12 @@ export function BookingItem({ b, as }: { b: Booking; as: 'student' | 'teacher' }
           </div>
           {b.note && <p className="mt-2 rounded-lg bg-surface px-2.5 py-1.5 text-xs text-ink/70">“{b.note}”</p>}
           {b.review && <div className="mt-2"><Stars value={b.review.rating} /></div>}
+          {b.lessonSummary && (
+            <div className="mt-2 rounded-xl border border-brand-100 bg-brand-50/60 px-3 py-2">
+              <p className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-wide text-brand-700"><NotebookPen className="h-3.5 w-3.5" /> {t('booking.summaryTitle')}</p>
+              <p className="mt-1 whitespace-pre-line text-sm text-ink/80">{b.lessonSummary}</p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -103,6 +114,14 @@ export function BookingItem({ b, as }: { b: Booking; as: 'student' | 'teacher' }
         )}
         {['requested', 'confirmed'].includes(b.status) && !started && (
           <Button size="sm" variant="ghost" onClick={() => setModal('cancel')}>{t('booking.cancel')}</Button>
+        )}
+        {canSummarize && (
+          <Button size="sm" variant="outline" icon={<NotebookPen className="h-4 w-4" />} onClick={() => setModal('summary')}>
+            {b.lessonSummary ? t('booking.summaryEdit') : t('booking.summaryWrite')}
+          </Button>
+        )}
+        {guaranteeOpen && (
+          <Button size="sm" variant="ghost" icon={<ShieldCheck className="h-4 w-4" />} onClick={() => setModal('guarantee')}>{t('booking.guarantee')}</Button>
         )}
         {as === 'student' && b.status === 'completed' && !b.review && (
           <Button size="sm" variant="secondary" icon={<Star className="h-4 w-4" />} onClick={() => setModal('review')}>{t('booking.review')}</Button>
@@ -132,6 +151,17 @@ export function BookingItem({ b, as }: { b: Booking; as: 'student' | 'teacher' }
           ))}
         </div>
         <Field label={t('review.comment')}><Textarea value={reason} onChange={(e) => setReason(e.target.value)} maxLength={2000} /></Field>
+      </Modal>
+      <Modal open={modal === 'summary'} onClose={() => setModal(null)} title={t('booking.summaryTitle')} size="sm"
+        footer={<Button className="w-full" loading={busy} disabled={summary.trim().length < 3} onClick={() => act(() => post(`/bookings/${b.id}/summary`, { summary }), t('common.done'))}>{t('common.save')}</Button>}>
+        <p className="mb-3 text-xs font-semibold text-muted">{t('booking.summaryHint')}</p>
+        <Textarea value={summary} onChange={(e) => setSummary(e.target.value)} maxLength={2000} rows={6} placeholder={t('booking.summaryPlaceholder')} />
+      </Modal>
+
+      <Modal open={modal === 'guarantee'} onClose={() => setModal(null)} title={t('booking.guarantee')} size="sm"
+        footer={<div className="flex justify-end gap-2"><Button variant="ghost" onClick={() => setModal(null)}>{t('common.back')}</Button><Button variant="danger" loading={busy} disabled={reason.trim().length < 3} onClick={() => act(() => post(`/bookings/${b.id}/guarantee`, { reason }), t('booking.guaranteeDone'))}>{t('common.confirm')}</Button></div>}>
+        <p className="mb-3 rounded-xl bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">{t('booking.guaranteeText')}</p>
+        <Field label={t('common.reason')}><Textarea value={reason} onChange={(e) => setReason(e.target.value)} maxLength={300} /></Field>
       </Modal>
       <PaySheet open={pay} bookingId={b.id} amount={b.price} onClose={() => setPay(false)} />
     </div>

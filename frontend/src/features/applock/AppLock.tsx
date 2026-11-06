@@ -1,7 +1,7 @@
 /**
  * Ilova qulfi:
  *  - O'rnatilgan ilovada (PWA standalone) birinchi kirishdan keyin PIN o'rnatish taklif qilinadi
- *  - Ilova fon rejimidan 60 soniyadan keyin qaytsa yoki server 5 daqiqa faolsizlikdan keyin qulflasa — lock screen
+ *  - O'rnatilgan ilova har safar ochilganda, fon rejimidan 30 soniyadan keyin qaytganda yoki server faolsizlik sababli qulflasa — lock screen
  *  - PIN yoki barmoq izi bilan ochiladi; 5 xato — sessiya bekor
  */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
@@ -18,13 +18,46 @@ import { biometricAvailable, registerBiometric, unlockWithBiometric } from './bi
 import { Avatar, Button } from '../../components/ui';
 import { LogoMark } from '../../components/Logo';
 
-const BG_LOCK_MS = 60_000;
+const BG_LOCK_MS = 30_000; // fon rejimida 30 soniyadan ko'p tursa — qulf
 const SKIP_KEY = 'et_applock_skip';
+const SESSION_KEY = 'et_unlocked'; // ilova oynasi yopilsa o'chadi (sessionStorage)
+
+function markUnlocked() {
+  try {
+    sessionStorage.setItem(SESSION_KEY, '1');
+  } catch {
+    /* ignore */
+  }
+}
+function wasUnlocked() {
+  try {
+    return sessionStorage.getItem(SESSION_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
 
 export function AppLockGate({ children }: { children: ReactNode }) {
-  const { me, refetch } = useAuth();
+  const { me, loading, refetch } = useAuth();
   const hiddenAt = useRef<number | null>(null);
   const [setupOpen, setSetupOpen] = useState(false);
+
+  // Bank ilovalari kabi: o'rnatilgan ilova har safar yangidan ochilganda — avval PIN / barmoq izi.
+  // Faqat sahifa ochilgandagi birinchi holat tekshiriladi: shu oynada parol bilan kirilgan bo'lsa qulflanmaydi.
+  const bootChecked = useRef(false);
+  useEffect(() => {
+    if (bootChecked.current || loading) return;
+    bootChecked.current = true;
+    if (!me) return markUnlocked(); // kirmagan foydalanuvchi keyin parol bilan kiradi
+    if (me.appLock.locked || !me.appLock.hasPin || !isStandalone() || wasUnlocked()) return;
+    void post('/auth/app-lock/lock')
+      .catch(() => undefined)
+      .then(() => refetch());
+  }, [loading, me, refetch]);
+
+  useEffect(() => {
+    if (me && !me.appLock.locked && bootChecked.current) markUnlocked();
+  }, [me]);
 
   // Fon rejimi → qaytganda qulflash
   useEffect(() => {
