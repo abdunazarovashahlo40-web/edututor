@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: edututor_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/edututor_test?schema=public
+      DIRECT_URL: postgresql://postgres:postgres@localhost:5432/edututor_test?schema=public
+      JWT_ACCESS_SECRET: ci-access-secret-ci-access-secret-123456
+      JWT_REFRESH_SECRET: ci-refresh-secret-ci-refresh-secret-123456
+      PAYMENT_SANDBOX: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm install
+      - run: npm run build
+      - name: DB schema + seed
+        working-directory: backend
+        run: |
+          npx prisma db push --skip-generate
+          npm run db:constraints
+          npm run db:seed
+      - name: Backend tests (unit + API)
+        working-directory: backend
+        run: RUN_API_TESTS=1 npm test
+      - name: Frontend tests
+        working-directory: frontend
+        run: npm test

@@ -1,0 +1,691 @@
+// EduTutor — PostgreSQL (Supabase) sxemasi
+// Pul qiymatlari: Decimal(14,2) UZS. Vaqtlar: UTC (timestamptz), ko'rsatishda Asia/Tashkent.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  STUDENT
+  TEACHER
+  ADMIN
+}
+
+enum UserStatus {
+  PENDING_VERIFICATION
+  ACTIVE
+  SUSPENDED
+}
+
+enum Locale {
+  uz
+  ru
+  en
+}
+
+enum TeacherVerification {
+  DRAFT
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum LessonType {
+  INDIVIDUAL
+  GROUP
+  TRIAL
+  CONSULTATION
+}
+
+enum LessonStatus {
+  draft
+  published
+  pending
+  booked
+  in_progress
+  completed
+  cancelled
+}
+
+enum SessionStatus {
+  scheduled
+  in_progress
+  completed
+  cancelled
+}
+
+enum BookingStatus {
+  requested
+  confirmed
+  rejected
+  cancelled
+  rescheduled
+  completed
+  no_show
+}
+
+enum PaymentStatus {
+  pending
+  processing
+  paid
+  failed
+  cancelled
+  refunded
+}
+
+enum PaymentProvider {
+  sandbox
+  payme
+  click
+  manual
+}
+
+enum RefundStatus {
+  requested
+  approved
+  rejected
+  processed
+}
+
+enum EarningStatus {
+  held
+  available
+  paid_out
+  reversed
+}
+
+enum PayoutStatus {
+  requested
+  processing
+  paid
+  rejected
+}
+
+enum HomeworkStatus {
+  assigned
+  submitted
+  reviewed
+  completed
+}
+
+enum ComplaintStatus {
+  open
+  in_review
+  resolved
+  rejected
+}
+
+enum OtpPurpose {
+  EMAIL_VERIFY
+  PASSWORD_RESET
+}
+
+model User {
+  id              String      @id @default(cuid())
+  email           String?     @unique
+  phone           String?     @unique
+  passwordHash    String?
+  fullName        String
+  avatarUrl       String?
+  role            Role        @default(STUDENT)
+  status          UserStatus  @default(PENDING_VERIFICATION)
+  locale          Locale      @default(uz)
+  emailVerifiedAt DateTime?
+  googleId        String?     @unique
+  telegramId      String?     @unique
+  failedLogins    Int         @default(0)
+  lockedUntil     DateTime?
+  lastLoginAt     DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  deletedAt       DateTime?
+
+  studentProfile  StudentProfile?
+  teacherProfile  TeacherProfile?
+  sessions        AuthSession[]
+  otps            OtpCode[]
+  devices         AppDevice[]
+  bookings        Booking[]           @relation("StudentBookings")
+  participants    BookingParticipant[]
+  notifications   Notification[]
+  sentMessages    Message[]
+  conversationsA  Conversation[]      @relation("ConvA")
+  conversationsB  Conversation[]      @relation("ConvB")
+  payments        Payment[]
+  reviews         Review[]
+  favorites       FavoriteTeacher[]
+  submissions     HomeworkSubmission[]
+  homeworkAssigned Homework[]         @relation("HomeworkStudent")
+  complaints      Complaint[]         @relation("ComplaintAuthor")
+  auditLogs       AuditLog[]
+
+  @@index([role, status])
+  @@index([createdAt])
+}
+
+model AuthSession {
+  id               String    @id @default(cuid())
+  userId           String
+  refreshTokenHash String    @unique
+  userAgent        String?
+  ip               String?
+  deviceId         String?
+  requiresUnlock   Boolean   @default(false)
+  lastActiveAt     DateTime  @default(now())
+  expiresAt        DateTime
+  revokedAt        DateTime?
+  createdAt        DateTime  @default(now())
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// O'rnatilgan ilova (PWA) qurilmasi: kirish kodi (PIN) va barmoq izi (WebAuthn)
+model AppDevice {
+  id               String    @id @default(cuid())
+  userId           String
+  name             String?
+  pinHash          String?
+  pinFailed        Int       @default(0)
+  credentialId     String?   @unique
+  credentialKey    Bytes?
+  credentialCounter Int      @default(0)
+  transports       String[]  @default([])
+  challenge        String?
+  lastUsedAt       DateTime?
+  createdAt        DateTime  @default(now())
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model OtpCode {
+  id         String     @id @default(cuid())
+  userId     String
+  purpose    OtpPurpose
+  codeHash   String
+  attempts   Int        @default(0)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime   @default(now())
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, purpose])
+}
+
+model StudentProfile {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  grade      String?
+  goals      String?
+  city       String?
+  birthYear  Int?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model TeacherProfile {
+  id               String              @id @default(cuid())
+  userId           String              @unique
+  headline         String?
+  bio              String?
+  education        String?
+  experienceYears  Int                 @default(0)
+  languages        String[]            @default(["uz"])
+  hourlyPrice      Decimal             @default(0) @db.Decimal(14, 2)
+  trialPrice       Decimal?            @db.Decimal(14, 2)
+  onlineFormat     Boolean             @default(true)
+  offlineFormat    Boolean             @default(false)
+  city             String?
+  videoIntroUrl    String?
+  verification     TeacherVerification @default(DRAFT)
+  verificationNote String?
+  verifiedAt       DateTime?
+  ratingAvg        Decimal             @default(0) @db.Decimal(3, 2)
+  ratingCount      Int                 @default(0)
+  lessonsCompleted Int                 @default(0)
+  payoutCard       String?             // faqat oxirgi 4 raqam saqlanadi: "8600 **** **** 1234"
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  subjects         TeacherSubject[]
+  certificates     TeacherCertificate[]
+  availability     TeacherAvailability[]
+  lessons          Lesson[]
+  sessions         LessonSession[]
+  bookings         Booking[]
+  homework         Homework[]
+  materials        LearningMaterial[]
+  reviews          Review[]
+  earnings         TeacherEarning[]
+  payouts          TeacherPayout[]
+  favoritedBy      FavoriteTeacher[]
+
+  @@index([verification, ratingAvg])
+  @@index([hourlyPrice])
+}
+
+model Subject {
+  id         String           @id @default(cuid())
+  slug       String           @unique
+  nameUz     String
+  nameRu     String
+  nameEn     String
+  category   String           @default("general")
+  icon       String?
+  isActive   Boolean          @default(true)
+  sortOrder  Int              @default(0)
+  createdAt  DateTime         @default(now())
+  teachers   TeacherSubject[]
+  lessons    Lesson[]
+}
+
+model TeacherSubject {
+  teacherId  String
+  subjectId  String
+  level      String?
+  teacher    TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  subject    Subject        @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@id([teacherId, subjectId])
+  @@index([subjectId])
+}
+
+model TeacherCertificate {
+  id        String         @id @default(cuid())
+  teacherId String
+  title     String
+  issuer    String?
+  year      Int?
+  fileUrl   String?
+  isVerificationDoc Boolean @default(false)
+  createdAt DateTime       @default(now())
+  teacher   TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@index([teacherId])
+}
+
+/// Haftalik takrorlanuvchi bo'sh vaqt (Asia/Tashkent mahalliy vaqtida, daqiqalarda)
+model TeacherAvailability {
+  id          String         @id @default(cuid())
+  teacherId   String
+  weekday     Int            // 0=Yakshanba ... 6=Shanba
+  startMinute Int            // 0..1439
+  endMinute   Int            // 1..1440
+  createdAt   DateTime       @default(now())
+  teacher     TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@index([teacherId, weekday])
+}
+
+/// Dars taklifi (kurs/xizmat). Guruh darslari uchun aniq sessiyalar LessonSession'da.
+model Lesson {
+  id           String          @id @default(cuid())
+  teacherId    String
+  subjectId    String
+  title        String
+  description  String?
+  type         LessonType      @default(INDIVIDUAL)
+  durationMin  Int             @default(60)
+  price        Decimal         @db.Decimal(14, 2)
+  maxStudents  Int             @default(1)
+  level        String?
+  meetingMethod String         @default("webrtc")
+  status       LessonStatus    @default(draft)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  deletedAt    DateTime?
+  teacher      TeacherProfile  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  subject      Subject         @relation(fields: [subjectId], references: [id])
+  sessions     LessonSession[]
+  bookings     Booking[]
+  materials    LearningMaterial[]
+
+  @@index([teacherId, status])
+  @@index([subjectId, status])
+}
+
+/// Kalendardagi aniq dars vaqti. O'qituvchi uchun vaqt kesishmasi DB darajasida taqiqlangan (constraints.sql).
+model LessonSession {
+  id         String        @id @default(cuid())
+  lessonId   String
+  teacherId  String
+  startAt    DateTime
+  endAt      DateTime
+  status     SessionStatus @default(scheduled)
+  capacity   Int           @default(1)
+  startedAt  DateTime?
+  endedAt    DateTime?
+  remindedAt DateTime?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  lesson     Lesson        @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  teacher    TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  bookings   Booking[]
+  meeting    Meeting?
+  homework   Homework[]
+
+  @@index([teacherId, startAt])
+  @@index([lessonId])
+}
+
+model Booking {
+  id            String         @id @default(cuid())
+  studentId     String
+  teacherId     String
+  lessonId      String
+  sessionId     String
+  status        BookingStatus  @default(requested)
+  price         Decimal        @db.Decimal(14, 2)
+  note          String?
+  cancelReason  String?
+  cancelledById String?
+  rescheduleFromId String?
+  confirmedAt   DateTime?
+  cancelledAt   DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  student       User           @relation("StudentBookings", fields: [studentId], references: [id])
+  teacher       TeacherProfile @relation(fields: [teacherId], references: [id])
+  lesson        Lesson         @relation(fields: [lessonId], references: [id])
+  session       LessonSession  @relation(fields: [sessionId], references: [id])
+  participants  BookingParticipant[]
+  payments      Payment[]
+  review        Review?
+  conversationMessages Message[]
+
+  @@unique([sessionId, studentId])
+  @@index([studentId, status])
+  @@index([teacherId, status])
+}
+
+model BookingParticipant {
+  id        String   @id @default(cuid())
+  bookingId String
+  userId    String
+  joinedAt  DateTime?
+  leftAt    DateTime?
+  attended  Boolean  @default(false)
+  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([bookingId, userId])
+}
+
+model Meeting {
+  id          String        @id @default(cuid())
+  sessionId   String        @unique
+  provider    String        @default("webrtc")
+  roomKey     String        @unique
+  externalUrl String?
+  openedAt    DateTime?
+  closedAt    DateTime?
+  createdAt   DateTime      @default(now())
+  session     LessonSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+}
+
+model Homework {
+  id          String         @id @default(cuid())
+  teacherId   String
+  studentId   String
+  sessionId   String?
+  title       String
+  description String?
+  attachmentUrl String?
+  dueAt       DateTime?
+  status      HomeworkStatus @default(assigned)
+  maxScore    Int            @default(100)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  teacher     TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  student     User           @relation("HomeworkStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  session     LessonSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  submissions HomeworkSubmission[]
+
+  @@index([studentId, status])
+  @@index([teacherId, status])
+}
+
+model HomeworkSubmission {
+  id          String    @id @default(cuid())
+  homeworkId  String
+  studentId   String
+  text        String?
+  fileUrl     String?
+  score       Int?
+  feedback    String?
+  reviewedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  homework    Homework  @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
+  student     User      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([homeworkId])
+}
+
+model LearningMaterial {
+  id          String         @id @default(cuid())
+  teacherId   String
+  lessonId    String?
+  title       String
+  description String?
+  fileUrl     String
+  fileName    String
+  mimeType    String
+  sizeBytes   Int
+  isPublic    Boolean        @default(false)
+  createdAt   DateTime       @default(now())
+  deletedAt   DateTime?
+  teacher     TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  lesson      Lesson?        @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+
+  @@index([teacherId])
+  @@index([lessonId])
+}
+
+/// Ikki foydalanuvchi o'rtasidagi suhbat. userAId < userBId (tartiblangan) — dublikat yo'q.
+model Conversation {
+  id            String    @id @default(cuid())
+  userAId       String
+  userBId       String
+  lastMessageAt DateTime  @default(now())
+  createdAt     DateTime  @default(now())
+  userA         User      @relation("ConvA", fields: [userAId], references: [id], onDelete: Cascade)
+  userB         User      @relation("ConvB", fields: [userBId], references: [id], onDelete: Cascade)
+  messages      Message[]
+
+  @@unique([userAId, userBId])
+  @@index([lastMessageAt])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  senderId       String
+  body           String
+  attachmentUrl  String?
+  bookingId      String?
+  readAt         DateTime?
+  createdAt      DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  booking        Booking?     @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+
+  @@index([conversationId, createdAt])
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  type      String
+  title     String
+  body      String?
+  link      String?
+  data      Json?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@index([userId, createdAt])
+}
+
+model Payment {
+  id           String          @id @default(cuid())
+  userId       String
+  bookingId    String
+  amount       Decimal         @db.Decimal(14, 2)
+  currency     String          @default("UZS")
+  provider     PaymentProvider
+  status       PaymentStatus   @default(pending)
+  receiptNo    String          @unique
+  paidAt       DateTime?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  user         User            @relation(fields: [userId], references: [id])
+  booking      Booking         @relation(fields: [bookingId], references: [id])
+  transactions PaymentTransaction[]
+  refunds      Refund[]
+  earning      TeacherEarning?
+
+  @@index([userId, status])
+  @@index([bookingId])
+}
+
+/// Provayder tranzaksiyasi (Payme/Click/Sandbox) — idempotent: (provider, externalId) unikal
+model PaymentTransaction {
+  id          String          @id @default(cuid())
+  paymentId   String
+  provider    PaymentProvider
+  externalId  String
+  state       Int             @default(0)
+  amount      Decimal         @db.Decimal(14, 2)
+  raw         Json?
+  performedAt DateTime?
+  cancelledAt DateTime?
+  reason      Int?
+  createdAt   DateTime        @default(now())
+  payment     Payment         @relation(fields: [paymentId], references: [id])
+
+  @@unique([provider, externalId])
+}
+
+model Refund {
+  id          String       @id @default(cuid())
+  paymentId   String
+  amount      Decimal      @db.Decimal(14, 2)
+  reason      String?
+  status      RefundStatus @default(requested)
+  requestedBy String
+  processedBy String?
+  processedAt DateTime?
+  createdAt   DateTime     @default(now())
+  payment     Payment      @relation(fields: [paymentId], references: [id])
+
+  @@index([status])
+}
+
+/// Escrow: to'lov dars tugaguncha "held", tugagach 24 soatdan keyin "available".
+model TeacherEarning {
+  id           String         @id @default(cuid())
+  teacherId    String
+  paymentId    String         @unique
+  gross        Decimal        @db.Decimal(14, 2)
+  commission   Decimal        @db.Decimal(14, 2)
+  net          Decimal        @db.Decimal(14, 2)
+  status       EarningStatus  @default(held)
+  availableAt  DateTime?
+  payoutId     String?
+  createdAt    DateTime       @default(now())
+  teacher      TeacherProfile @relation(fields: [teacherId], references: [id])
+  payment      Payment        @relation(fields: [paymentId], references: [id])
+  payout       TeacherPayout? @relation(fields: [payoutId], references: [id])
+
+  @@index([teacherId, status])
+}
+
+model TeacherPayout {
+  id          String         @id @default(cuid())
+  teacherId   String
+  amount      Decimal        @db.Decimal(14, 2)
+  status      PayoutStatus   @default(requested)
+  destination String?
+  processedAt DateTime?
+  createdAt   DateTime       @default(now())
+  teacher     TeacherProfile @relation(fields: [teacherId], references: [id])
+  earnings    TeacherEarning[]
+
+  @@index([teacherId, status])
+}
+
+model Review {
+  id         String         @id @default(cuid())
+  bookingId  String         @unique
+  studentId  String
+  teacherId  String
+  rating     Int
+  comment    String?
+  isHidden   Boolean        @default(false)
+  reportCount Int           @default(0)
+  createdAt  DateTime       @default(now())
+  booking    Booking        @relation(fields: [bookingId], references: [id])
+  student    User           @relation(fields: [studentId], references: [id])
+  teacher    TeacherProfile @relation(fields: [teacherId], references: [id])
+
+  @@index([teacherId, createdAt])
+}
+
+model FavoriteTeacher {
+  userId    String
+  teacherId String
+  createdAt DateTime       @default(now())
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  teacher   TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@id([userId, teacherId])
+}
+
+model Complaint {
+  id          String          @id @default(cuid())
+  authorId    String
+  targetType  String          // user | review | lesson | booking
+  targetId    String
+  reason      String
+  status      ComplaintStatus @default(open)
+  resolution  String?
+  resolvedBy  String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  author      User            @relation("ComplaintAuthor", fields: [authorId], references: [id])
+
+  @@index([status])
+}
+
+model PlatformSetting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  action     String
+  entityType String
+  entityId   String?
+  meta       Json?
+  ip         String?
+  createdAt  DateTime @default(now())
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}

@@ -1,0 +1,39 @@
+{
+  "name": "edututor",
+  "version": "1.0.0",
+  "private": true,
+  "description": "EduTutor — O'zbekiston uchun onlayn repetitorlik platformasi",
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c magenta,blue \"npm run dev --workspace backend\" \"npm run dev --workspace frontend\"",
+    "dev:backend": "npm run dev --workspace backend",
+    "dev:frontend": "npm run dev --workspace frontend",
+    "build": "npm run build --workspace backend && npm run build --workspace frontend",
+    "start": "npm run start --workspace backend",
+    "db:migrate": "npm run db:migrate --workspace backend",
+    "db:deploy": "npm run db:deploy --workspace backend",
+    "db:seed": "npm run db:seed --workspace backend",
+    "test": "npm run test --workspace backend && npm run test --workspace frontend",
+    "render:build": "npm install --include=dev && npm run build && npm run db:deploy --workspace backend",
+    "test:e2e": "npm run test:e2e --workspace frontend",
+    "admin:create": "npm run admin:create --workspace backend",
+    "typecheck": "npm run typecheck --workspace backend && npm run typecheck --workspace frontend"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "allowScripts": {
+    "prisma@5.22.0": true,
+    "@prisma/client@5.22.0": true,
+    "@prisma/engines@5.22.0": true,
+    "esbuild@0.28.2": true,
+    "esbuild@0.21.5": true,
+    "esbuild@0.25.12": true
+  }
+}

@@ -1,0 +1,57 @@
+# Render Blueprint: GitHub repo → Render → "New +" → "Blueprint" → shu fayl tanlanadi.
+# Frontend va API bitta servisda (bir domen → cookie, CSRF va WebSocket muammosiz).
+services:
+  - type: web
+    name: edututor
+    runtime: node
+    region: frankfurt
+    plan: free
+    buildCommand: npm run render:build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: 20.18.1
+      - key: NODE_ENV
+        value: production
+      - key: APP_URL
+        sync: false # https://edututor.onrender.com
+      - key: CORS_ORIGINS
+        sync: false # https://edututor.onrender.com
+      - key: WEBAUTHN_RP_ID
+        sync: false # edututor.onrender.com  (https:// siz!)
+      - key: DATABASE_URL
+        sync: false # Supabase pooler (6543) + ?pgbouncer=true&connection_limit=5
+      - key: DIRECT_URL
+        sync: false # Supabase session (5432) — migratsiyalar uchun
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: EMAIL_PROVIDER
+        value: brevo
+      - key: BREVO_API_KEY
+        sync: false # brevo.com → SMTP & API → API Keys
+      - key: EMAIL_FROM
+        sync: false # "EduTutor <brevoda-tasdiqlangan@gmail.com>"
+      - key: STORAGE_DRIVER
+        value: supabase
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_BUCKET
+        value: edututor
+      - key: PAYMENT_SANDBOX
+        value: "true"
+      - key: PLATFORM_COMMISSION_PERCENT
+        value: "15"
+      - key: VIDEO_PROVIDER
+        value: webrtc
+      - key: TURN_URL
+        sync: false
+      - key: TURN_USERNAME
+        sync: false
+      - key: TURN_CREDENTIAL
+        sync: false

@@ -1,0 +1,74 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { -webkit-tap-highlight-color: transparent; }
+  body {
+    @apply bg-surface font-sans text-ink antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  :focus-visible { outline: none; }
+  ::selection { background: #DDD6FE; color: #4C1D95; }
+}
+
+@layer components {
+  .select-chevron {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748B' stroke-width='3'><path d='m6 9 6 6 6-6'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+  }
+  .container-x { @apply mx-auto w-full max-w-7xl px-4 md:px-6; }
+  .glass {
+    background: linear-gradient(160deg, rgba(255,255,255,.16), rgba(255,255,255,.06));
+    backdrop-filter: blur(18px) saturate(140%);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+    border: 1px solid rgba(255,255,255,.18);
+  }
+  .glass-light {
+    background: rgba(255,255,255,.75);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+  .text-gradient { @apply bg-gradient-to-r from-brand-700 via-brand-500 to-accent bg-clip-text text-transparent; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { scrollbar-width: none; }
+  .safe-bottom { padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+}
+
+/* ---------- Auth: chiroq sahnasi ---------- */
+@layer components {
+  .auth-input {
+    @apply h-11 w-full rounded-xl border border-white/15 bg-white/[.07] px-4 text-[15px] text-white placeholder:text-white/45 transition;
+  }
+  .auth-input:focus {
+    outline: none;
+    border-color: rgb(var(--lamp) / .9);
+    box-shadow: 0 0 0 4px rgb(var(--lamp) / .22), 0 0 24px rgb(var(--lamp) / .25);
+    background: rgba(255,255,255,.1);
+  }
+  .auth-input:-webkit-autofill { -webkit-text-fill-color: #fff; transition: background-color 9999s; }
+}
+
+/* Past (noutbuk) ekranlarda forma butunlay sig'ishi uchun biroz kichraytiriladi */
+@media (min-width: 768px) and (max-height: 860px) {
+  .auth-stage { padding-top: 128px; }
+  .auth-stage .glass { zoom: .9; }
+}
+@media (min-width: 768px) and (max-height: 740px) {
+  .auth-stage .glass { zoom: .8; }
+}
+
+@keyframes dust {
+  0% { transform: translate3d(0, 0, 0); opacity: 0; }
+  15% { opacity: .9; }
+  100% { transform: translate3d(var(--dx), -140px, 0); opacity: 0; }
+}
+@keyframes drift {
+  0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+  50% { transform: translate3d(12px, -18px, 0) rotate(6deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
