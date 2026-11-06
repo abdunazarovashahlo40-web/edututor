@@ -29,7 +29,10 @@ const schema = z.object({
   JWT_REFRESH_SECRET: z.string().min(32, 'JWT_REFRESH_SECRET kamida 32 belgi'),
   WEBAUTHN_RP_ID: z.string().default('localhost'),
   WEBAUTHN_RP_NAME: z.string().default('EduTutor'),
-  EMAIL_PROVIDER: z.enum(['console', 'brevo', 'resend', 'smtp']).default('console'),
+  EMAIL_PROVIDER: z.enum(['console', 'brevo', 'resend', 'smtp', 'gmail_script']).default('console'),
+  // Google Apps Script "ko'prik": Gmail orqali HTTPS bilan yuborish (SMTP porti yopiq hostinglar uchun)
+  GMAIL_SCRIPT_URL: z.string().optional(),
+  GMAIL_SCRIPT_TOKEN: z.string().optional(),
   BREVO_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().default('EduTutor <no-reply@edututor.uz>'),
   RESEND_API_KEY: z.string().optional(),

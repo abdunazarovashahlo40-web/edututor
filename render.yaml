@@ -30,15 +30,11 @@ services:
       - key: JWT_REFRESH_SECRET
         generateValue: true
       - key: EMAIL_PROVIDER
-        value: smtp
-      - key: SMTP_HOST
-        value: smtp.gmail.com
-      - key: SMTP_PORT
-        value: "587"
-      - key: SMTP_USER
-        sync: false # loyiha Gmail manzili
-      - key: SMTP_PASS
-        sync: false # Gmail App password (16 belgi, bo'sh joysiz)
+        value: gmail_script # bepul Render'da SMTP portlari yopiq → Gmail Apps Script (HTTPS)
+      - key: GMAIL_SCRIPT_URL
+        sync: false # script.google.com → Deploy → Web app URL (.../exec)
+      - key: GMAIL_SCRIPT_TOKEN
+        sync: false # Script Properties'dagi TOKEN bilan bir xil
       - key: EMAIL_FROM
         sync: false # "EduTutor <loyiha-gmail@gmail.com>"
       - key: STORAGE_DRIVER

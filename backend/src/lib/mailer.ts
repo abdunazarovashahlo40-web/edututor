@@ -12,6 +12,35 @@ function parseFrom(from: string) {
 }
 
 export async function sendMail(m: Mail) {
+  // Gmail Apps Script ko'prigi: xat aynan loyiha Gmail'idan ketadi, lekin HTTPS (443) orqali —
+  // Render bepul rejasidagi kabi SMTP portlari yopiq joyda ham ishlaydi. Skript: docs/gmail-bridge.gs
+  if (env.EMAIL_PROVIDER === 'gmail_script' && env.GMAIL_SCRIPT_URL && env.GMAIL_SCRIPT_TOKEN) {
+    try {
+      const r = await fetch(env.GMAIL_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // Apps Script uchun eng ishonchli tur
+        body: JSON.stringify({
+          token: env.GMAIL_SCRIPT_TOKEN,
+          to: m.to,
+          subject: m.subject,
+          text: m.text,
+          html: m.html,
+          name: parseFrom(env.EMAIL_FROM).name,
+        }),
+        redirect: 'follow',
+        signal: AbortSignal.timeout(20_000),
+      });
+      const body = await r.text();
+      let ok = false;
+      try { ok = JSON.parse(body).ok === true; } catch { /* HTML xato sahifasi */ }
+      // xat matni va kod log'ga yozilmaydi
+      if (!ok) console.error('Gmail script xatosi', r.status, body.slice(0, 200));
+      return;
+    } catch (e) {
+      console.error('Gmail script ulanmadi:', (e as Error).name);
+      return;
+    }
+  }
   // Brevo (ex-Sendinblue): bepul 300 xat/kun, domen shart emas — tasdiqlangan Gmail manzilidan yuboriladi
   if (env.EMAIL_PROVIDER === 'brevo' && env.BREVO_API_KEY) {
     const r = await fetch('https://api.brevo.com/v3/smtp/email', {
