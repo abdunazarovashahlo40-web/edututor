@@ -30,11 +30,17 @@ services:
       - key: JWT_REFRESH_SECRET
         generateValue: true
       - key: EMAIL_PROVIDER
-        value: brevo
-      - key: BREVO_API_KEY
-        sync: false # brevo.com → SMTP & API → API Keys
+        value: smtp
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false # loyiha Gmail manzili
+      - key: SMTP_PASS
+        sync: false # Gmail App password (16 belgi, bo'sh joysiz)
       - key: EMAIL_FROM
-        sync: false # "EduTutor <brevoda-tasdiqlangan@gmail.com>"
+        sync: false # "EduTutor <loyiha-gmail@gmail.com>"
       - key: STORAGE_DRIVER
         value: supabase
       - key: SUPABASE_URL

@@ -36,7 +36,12 @@ export async function sendMail(m: Mail) {
       host: env.SMTP_HOST,
       port: env.SMTP_PORT,
       secure: env.SMTP_PORT === 465,
-      auth: env.SMTP_USER ? { user: env.SMTP_USER, pass: env.SMTP_PASS } : undefined,
+      // Gmail App password bo'sh joy bilan ko'rsatiladi — olib tashlaymiz
+      auth: env.SMTP_USER ? { user: env.SMTP_USER, pass: (env.SMTP_PASS ?? '').replace(/\s+/g, '') } : undefined,
+      // port yopiq bo'lsa so'rov osilib qolmasin
+      connectionTimeout: 15_000,
+      greetingTimeout: 15_000,
+      socketTimeout: 20_000,
     });
     await transporter.sendMail({ from: env.EMAIL_FROM, ...m });
     return;
