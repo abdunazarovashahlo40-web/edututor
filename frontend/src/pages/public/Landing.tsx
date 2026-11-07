@@ -46,6 +46,7 @@ export default function Landing() {
   const subjects = useQuery({ queryKey: ['subjects'], queryFn: () => get<Subject[]>('/subjects'), staleTime: 300_000 });
   const featured = useQuery({ queryKey: ['teachers', 'featured'], queryFn: () => get<TC[]>('/teachers', { sort: 'rating', limit: 6 }) });
   const stats = useQuery({ queryKey: ['public-stats'], queryFn: () => get<{ teachers: number; students: number; lessons: number; rating: number }>('/public/stats'), staleTime: 300_000 });
+  const reviews = useQuery({ queryKey: ['public-reviews'], queryFn: () => get<{ id: string; rating: number; comment: string; student: { name: string; avatarUrl: string | null }; teacher: { id: string; user: { fullName: string } } }[]>('/public/reviews'), staleTime: 300_000 });
 
   const [q, setQ] = useState('');
   const [subject, setSubject] = useState('');
@@ -331,25 +332,24 @@ export default function Landing() {
               </div>
             ))}
           </div>
-          <div className="mt-10 grid gap-4 md:grid-cols-3">
-            {[
-              ['Dilnoza K.', 'DTM: 112 → 176', 'Azizbek ustoz bilan 3 oy. Matematikadan to\'liq ball oldim!'],
-              ['Jasur T.', 'IELTS 5.5 → 7.0', 'Speaking darslari juda foydali bo\'ldi, har darsda aniq feedback.'],
-              ['Madina S.', 'Olimpiada: 2-o\'rin', 'Fizika masalalarini yechish uslubim butunlay o\'zgardi.'],
-            ].map(([n, r, q]) => (
-              <div key={n} className="rounded-2xl bg-white/10 p-5 backdrop-blur">
-                <Stars value={5} />
-                <p className="mt-2 text-sm text-white/90">“{q}”</p>
-                <div className="mt-3 flex items-center gap-2">
-                  <Avatar name={n} size={32} />
-                  <div>
-                    <div className="text-sm font-bold">{n}</div>
-                    <div className="text-xs font-bold text-amber-300">{r}</div>
+          {/* Faqat platformadagi haqiqiy sharhlar ko'rsatiladi; hali yo'q bo'lsa — bo'lim chiqmaydi */}
+          {!!reviews.data?.length && (
+            <div className="mt-10 grid gap-4 md:grid-cols-3">
+              {reviews.data.map((r) => (
+                <Link key={r.id} to={`/teachers/${r.teacher.id}`} className="rounded-2xl bg-white/10 p-5 backdrop-blur transition hover:bg-white/15">
+                  <Stars value={r.rating} />
+                  <p className="mt-2 line-clamp-4 text-sm text-white/90">“{r.comment}”</p>
+                  <div className="mt-3 flex items-center gap-2">
+                    <Avatar name={r.student.name} src={r.student.avatarUrl} size={32} />
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-bold">{r.student.name}</div>
+                      <div className="truncate text-xs font-bold text-amber-300">{t('landing.reviewAbout', { name: r.teacher.user.fullName })}</div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            ))}
-          </div>
+                </Link>
+              ))}
+            </div>
+          )}
         </motion.div>
       </section>
 

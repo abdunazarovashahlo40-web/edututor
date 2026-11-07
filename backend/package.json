@@ -17,6 +17,7 @@
     "db:studio": "prisma studio",
     "test": "vitest run",
     "test:watch": "vitest",
+    "demo:remove": "tsx scripts/remove-demo.ts",
     "admin:create": "tsx scripts/create-admin.ts"
   },
   "prisma": {

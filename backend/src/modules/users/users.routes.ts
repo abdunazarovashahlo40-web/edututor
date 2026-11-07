@@ -1,3 +1,4 @@
+import { audit } from '../../lib/audit';
 import { Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../../lib/prisma';
@@ -21,6 +22,7 @@ usersRouter.patch(
         fullName: z.string().min(3).max(100).optional(),
         phone: z.string().optional().nullable(),
         locale: z.enum(['uz', 'ru', 'en']).optional(),
+        notifyPrefs: z.object({ email: z.boolean(), reminders: z.boolean(), messages: z.boolean(), marketing: z.boolean() }).partial().optional(),
         student: z
           .object({
             grade: z.string().max(40).optional().nullable(),
@@ -40,9 +42,10 @@ usersRouter.patch(
     }
     const user = await prisma.user.update({
       where: { id: req.user!.id },
-      data: { fullName: b.fullName, locale: b.locale, phone },
-      select: { id: true, fullName: true, phone: true, locale: true },
+      data: { fullName: b.fullName, locale: b.locale, phone, ...(b.notifyPrefs ? { notifyPrefs: b.notifyPrefs } : {}) },
+      select: { id: true, fullName: true, phone: true, locale: true, notifyPrefs: true },
     });
+    await audit(req, 'user.update', 'User', req.user!.id, { fields: Object.keys(b) });
     if (b.student && req.user!.role === 'STUDENT') {
       await prisma.studentProfile.upsert({
         where: { userId: req.user!.id },
@@ -107,6 +110,7 @@ usersRouter.delete(
       }),
       prisma.authSession.updateMany({ where: { userId: id }, data: { revokedAt: new Date() } }),
     ]);
+    await audit(req, 'user.delete', 'User', id);
     clearAuthCookies(res);
     ok(res, { deleted: true });
   }),

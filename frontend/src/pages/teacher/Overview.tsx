@@ -26,10 +26,10 @@ export default function TeacherOverview() {
       </div>
       {a.isLoading ? <Skeleton className="h-24" /> : (
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatCard icon={<Users className="h-5 w-5" />} label={t('teacher.activeStudents')} value={d?.totalStudents ?? 0} />
-          <StatCard icon={<CalendarCheck className="h-5 w-5" />} label={t('teacher.lessonsDone')} value={d?.completedLessons ?? 0} tone="blue" />
-          <StatCard icon={<Star className="h-5 w-5" />} label={t('teacher.rating')} value={d?.rating?.toFixed(1) ?? '—'} hint={`${d?.ratingCount ?? 0} ${t('common.reviews')}`} tone="amber" />
-          <StatCard icon={<Wallet className="h-5 w-5" />} label={t('teacher.monthIncome')} value={money(d?.monthlyEarnings ?? 0, locale)} tone="green" />
+          <StatCard to="/teacher/students" icon={<Users className="h-5 w-5" />} label={t('teacher.activeStudents')} value={d?.totalStudents ?? 0} />
+          <StatCard to="/teacher/bookings" icon={<CalendarCheck className="h-5 w-5" />} label={t('teacher.lessonsDone')} value={d?.completedLessons ?? 0} tone="blue" />
+          <StatCard to="/teacher/reviews" icon={<Star className="h-5 w-5" />} label={t('teacher.rating')} value={d?.rating?.toFixed(1) ?? '—'} hint={`${d?.ratingCount ?? 0} ${t('common.reviews')}`} tone="amber" />
+          <StatCard to="/teacher/earnings" icon={<Wallet className="h-5 w-5" />} label={t('teacher.monthIncome')} value={money(d?.monthlyEarnings ?? 0, locale)} tone="green" />
         </div>
       )}
 
@@ -58,15 +58,18 @@ export default function TeacherOverview() {
           )}
         </Card>
         <Card className="flex flex-col">
-          <h2 className="mb-2 text-lg font-extrabold">{t('teacher.earningsChart')}</h2>
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-lg font-extrabold">{t('teacher.earningsChart')}</h2>
+            <Link to="/teacher/earnings" className="text-sm font-bold text-brand-700">{t('menu.earnings')} →</Link>
+          </div>
           <div className="h-48 flex-1">
             <ResponsiveContainer>
               <AreaChart data={d?.earningsByMonth ?? []}>
                 <defs><linearGradient id="earn" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#8B5CF6" stopOpacity={0.4} /><stop offset="1" stopColor="#8B5CF6" stopOpacity={0} /></linearGradient></defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#EEF0F7" />
-                <XAxis dataKey="month" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(m) => m.slice(5)} />
+                <XAxis dataKey="month" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={(m) => new Intl.DateTimeFormat(locale === 'en' ? 'en-GB' : locale === 'ru' ? 'ru-RU' : 'uz-UZ', { month: 'short' }).format(new Date(`${m}-15`))} />
                 <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={40} tickFormatter={(v) => compact(v)} />
-                <Tooltip formatter={(v: number) => money(v, locale)} contentStyle={{ borderRadius: 12, border: '1px solid #E8E6F5' }} />
+                <Tooltip formatter={(v: number) => [money(v, locale), t('teacher.monthIncome')]} labelFormatter={(m) => new Intl.DateTimeFormat(locale === 'en' ? 'en-GB' : locale === 'ru' ? 'ru-RU' : 'uz-UZ', { month: 'long', year: 'numeric' }).format(new Date(`${m}-15`))} contentStyle={{ borderRadius: 12, border: '1px solid #E8E6F5' }} />
                 <Area type="monotone" dataKey="net" stroke="#6D28D9" strokeWidth={2.5} fill="url(#earn)" />
               </AreaChart>
             </ResponsiveContainer>

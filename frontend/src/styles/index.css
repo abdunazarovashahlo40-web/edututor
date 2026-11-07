@@ -88,3 +88,10 @@
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+/* Chekni chop etish: faqat chek ko'rinadi */
+@media print {
+  body * { visibility: hidden !important; }
+  .print-area, .print-area * { visibility: visible !important; }
+  .print-area { position: fixed; inset: 0 auto auto 0; width: 100%; border: 0 !important; }
+}

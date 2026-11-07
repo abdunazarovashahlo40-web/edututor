@@ -1,4 +1,4 @@
-import { useState, type ComponentType, type ReactNode } from 'react';
+import { Suspense, useEffect, useState, type ComponentType, type ReactNode } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { LogOut, Menu, X, ChevronDown, MoreHorizontal } from 'lucide-react';
@@ -6,7 +6,8 @@ import { useQuery } from '@tanstack/react-query';
 import { Logo, LogoMark } from '../components/Logo';
 import { LanguageSwitcher } from '../components/LanguageSwitcher';
 import { NotificationBell } from '../components/NotificationBell';
-import { Avatar, Modal } from '../components/ui';
+import { ProfileMenu } from '../components/ProfileMenu';
+import { Avatar, Modal, Spinner } from '../components/ui';
 import { useAuth } from '../store/auth';
 import { useI18n } from '../i18n';
 import { get } from '../services/api';
@@ -37,6 +38,11 @@ export function DashboardShell({
   const loc = useLocation();
   const [drawer, setDrawer] = useState(false);
   const [more, setMore] = useState(false);
+  // Bo'lim tanlanganda menyu albatta yopiladi (sahifa yuklanishini kutmasdan)
+  useEffect(() => {
+    setDrawer(false);
+    setMore(false);
+  }, [loc.pathname, loc.search]);
   const base = `/${variant}`;
   const unread = useQuery({ queryKey: ['unread'], queryFn: () => get<{ count: number }>('/messages/unread-count'), refetchInterval: 60_000 });
   const withBadges = (items: typeof nav) =>
@@ -142,17 +148,17 @@ export function DashboardShell({
           <div className="ml-auto flex items-center gap-1">
             <LanguageSwitcher compact />
             <NotificationBell base={base} />
-            <button onClick={() => navigate(variant === 'admin' ? '/admin/account' : `${base}/settings`)} className="ml-1 flex items-center gap-1 rounded-xl p-1 hover:bg-brand-50" aria-label={t('common.profile')}>
-              <Avatar name={me?.fullName} src={me?.avatarUrl} size={34} />
-              <ChevronDown className="hidden h-4 w-4 text-muted md:block" />
-            </button>
+            <ProfileMenu settingsPath={variant === 'admin' ? '/admin/account' : `${base}/settings`} onLogout={doLogout} />
           </div>
         </header>
 
         <main className="px-4 pb-28 pt-5 md:px-8 md:pb-10 md:pt-7">
-          <motion.div key={loc.pathname} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
-            <Outlet />
-          </motion.div>
+          {/* Faqat kontent qismi kutadi — menyu va sarlavha "muzlab" qolmaydi */}
+          <Suspense fallback={<div className="grid min-h-[40vh] place-items-center"><Spinner className="h-7 w-7 text-brand-600" /></div>}>
+            <motion.div key={loc.pathname} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
+              <Outlet />
+            </motion.div>
+          </Suspense>
         </main>
       </div>
 
@@ -184,7 +190,7 @@ export function DashboardShell({
       <Modal open={more} onClose={() => setMore(false)} title={t('menu.more')}>
         <div className="grid grid-cols-3 gap-2">
           {(nav.filter((n) => 'to' in n) as NavItem[]).map((i) => (
-            <NavLink key={i.to} to={i.to} onClick={() => setMore(false)} className="flex flex-col items-center gap-1.5 rounded-2xl bg-brand-50/60 p-3 text-center text-xs font-bold text-ink">
+            <NavLink key={i.to} to={i.to} replace onClick={() => setMore(false)} className="flex flex-col items-center gap-1.5 rounded-2xl bg-brand-50/60 p-3 text-center text-xs font-bold text-ink">
               <i.icon className="h-6 w-6 text-brand-600" />
               {i.label}
             </NavLink>

@@ -19,6 +19,7 @@
     "test": "npm run test --workspace backend && npm run test --workspace frontend",
     "render:build": "npm install --include=dev && npm run build && npm run db:deploy --workspace backend",
     "test:e2e": "npm run test:e2e --workspace frontend",
+    "demo:remove": "npm run demo:remove --workspace backend",
     "admin:create": "npm run admin:create --workspace backend",
     "typecheck": "npm run typecheck --workspace backend && npm run typecheck --workspace frontend"
   },

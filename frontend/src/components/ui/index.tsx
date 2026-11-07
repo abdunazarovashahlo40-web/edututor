@@ -1,6 +1,7 @@
-import { forwardRef, useEffect, type HTMLAttributes, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react';
+import { forwardRef, useEffect, useRef, type HTMLAttributes, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from 'react';
 import { AnimatePresence, motion, useDragControls } from 'framer-motion';
 import { Loader2, X, Inbox, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { cn } from '../../utils/cn';
 import { initials } from '../../utils/format';
 import { useIsMobile } from '../../hooks/useMedia';
@@ -192,6 +193,8 @@ export function FullPageSpinner() {
 export function Modal({ open, onClose, title, children, size = 'md', footer }: { open: boolean; onClose: () => void; title?: ReactNode; children: ReactNode; size?: 'sm' | 'md' | 'lg' | 'xl'; footer?: ReactNode }) {
   const mobile = useIsMobile();
   const drag = useDragControls();
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
   useEffect(() => {
     if (!open) return;
     const k = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -202,6 +205,30 @@ export function Modal({ open, onClose, title, children, size = 'md', footer }: {
       document.body.style.overflow = '';
     };
   }, [open, onClose]);
+  // Telefondagi "orqaga" tugmasi/ishorasi avval shu oynani yopadi (sahifadan chiqib ketmaydi)
+  useEffect(() => {
+    if (!open) return;
+    const id = Math.random().toString(36).slice(2);
+    let byBack = false;
+    let pushed = false;
+    // setTimeout: React StrictMode effektni ikki marta ishga tushirganda ortiqcha yozuv qolmasin
+    const timer = window.setTimeout(() => {
+      pushed = true;
+      history.pushState({ ...history.state, __modal: id }, '');
+    }, 0);
+    const onPop = () => {
+      if (!pushed || history.state?.__modal === id) return; // ustidagi boshqa oyna yopildi
+      byBack = true;
+      closeRef.current();
+    };
+    window.addEventListener('popstate', onPop);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener('popstate', onPop);
+      // Tugma bilan yopilganda tarixdagi belgimizni olib tashlaymiz
+      if (pushed && !byBack && history.state?.__modal === id) history.back();
+    };
+  }, [open]);
   return (
     <AnimatePresence>
       {open && (
@@ -250,7 +277,7 @@ export function Modal({ open, onClose, title, children, size = 'md', footer }: {
 /* ---------------- Tabs, Pagination ---------------- */
 export function Tabs<T extends string>({ value, onChange, items, className }: { value: T; onChange: (v: T) => void; items: { value: T; label: ReactNode; count?: number }[]; className?: string }) {
   return (
-    <div className={cn('no-scrollbar flex gap-1 overflow-x-auto rounded-2xl bg-brand-50/70 p-1', className)}>
+    <div className={cn('no-scrollbar flex max-w-full gap-1 overflow-x-auto overscroll-x-contain rounded-2xl bg-brand-50/70 p-1', className)}>
       {items.map((it) => (
         <button
           key={it.value}
@@ -283,18 +310,24 @@ export function Pagination({ page, pages, onChange }: { page: number; pages: num
 }
 
 /* ---------------- Stats ---------------- */
-export function StatCard({ icon, label, value, hint, tone: t = 'brand' }: { icon: ReactNode; label: string; value: ReactNode; hint?: ReactNode; tone?: 'brand' | 'blue' | 'green' | 'amber' | 'pink' }) {
+/** Statistika kartasi. `to` berilsa — bosilganda tegishli bo'limga o'tadi */
+export function StatCard({ icon, label, value, hint, tone: t = 'brand', to, onClick, active }: { icon: ReactNode; label: string; value: ReactNode; hint?: ReactNode; tone?: 'brand' | 'blue' | 'green' | 'amber' | 'pink'; to?: string; onClick?: () => void; active?: boolean }) {
   const bg = { brand: 'bg-brand-100 text-brand-700', blue: 'bg-blue-100 text-blue-600', green: 'bg-green-100 text-green-600', amber: 'bg-amber-100 text-amber-600', pink: 'bg-pink-100 text-pink-600' }[t];
-  return (
-    <Card className="flex items-start gap-3 p-4">
+  const body = (
+    <>
       <div className={cn('grid h-10 w-10 shrink-0 place-items-center rounded-xl', bg)}>{icon}</div>
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <div className="truncate text-xl font-extrabold text-ink">{value}</div>
         <div className="truncate text-xs font-semibold text-muted">{label}</div>
-        {hint && <div className="mt-0.5 text-[11px] font-bold text-success">{hint}</div>}
+        {hint && <div className="mt-0.5 truncate text-[11px] font-bold text-success">{hint}</div>}
       </div>
-    </Card>
+      {(to || onClick) && <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-slate-300 transition group-hover:translate-x-0.5 group-hover:text-brand-500" />}
+    </>
   );
+  const cls = cn('group flex items-start gap-3 rounded-2xl border bg-white p-4 shadow-soft transition', active ? 'border-brand-400 ring-2 ring-brand-200' : 'border-line/70', (to || onClick) && 'hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-lift active:scale-[.99]');
+  if (to) return <Link to={to} className={cls}>{body}</Link>;
+  if (onClick) return <button type="button" onClick={onClick} className={cn(cls, 'w-full text-left')}>{body}</button>;
+  return <div className={cls}>{body}</div>;
 }
 
 export function ProgressRing({ value, size = 96, stroke = 10, color = '#22C55E', children }: { value: number; size?: number; stroke?: number; color?: string; children?: ReactNode }) {

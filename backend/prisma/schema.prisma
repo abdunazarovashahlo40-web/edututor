@@ -140,6 +140,7 @@ model User {
   googleId        String?     @unique
   telegramId      String?     @unique
   parentShareToken String?    @unique // ota-ona uchun faqat o'qiladigan natijalar havolasi
+  notifyPrefs     Json?       // bildirishnoma sozlamalari: { email, reminders, marketing }
   failedLogins    Int         @default(0)
   lockedUntil     DateTime?
   lastLoginAt     DateTime?
@@ -253,6 +254,10 @@ model TeacherProfile {
   ratingCount      Int                 @default(0)
   lessonsCompleted Int                 @default(0)
   payoutCard       String?             // faqat oxirgi 4 raqam saqlanadi: "8600 **** **** 1234"
+  // Shaxsni tasdiqlash: JSHSHIR/pasport to'liq saqlanmaydi — faqat oxirgi 4 belgi va takrorlarni aniqlash uchun HMAC xesh
+  identityType     String?             // pinfl | passport
+  identityLast4    String?
+  identityHash     String?
   createdAt        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
   user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -272,6 +277,8 @@ model TeacherProfile {
 
   @@index([verification, ratingAvg])
   @@index([hourlyPrice])
+
+  @@index([identityHash])
 }
 
 model Subject {
@@ -308,6 +315,13 @@ model TeacherCertificate {
   year      Int?
   fileUrl   String?
   isVerificationDoc Boolean @default(false)
+  docType   String?        // diploma | certificate | language | category | other
+  docNumber String?        // seriya va raqam
+  checkStatus String       @default("unchecked") // unchecked | verified | not_found | mismatch
+  checkSource String?      // qayerda tekshirilgan (masalan diplom.edu.uz)
+  checkNote   String?
+  checkedAt   DateTime?
+  checkedBy   String?
   createdAt DateTime       @default(now())
   teacher   TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
 

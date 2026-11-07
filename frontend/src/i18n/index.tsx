@@ -15,7 +15,7 @@ function get(obj: unknown, path: string): unknown {
   return path.split('.').reduce<unknown>((o, k) => (o && typeof o === 'object' ? (o as Record<string, unknown>)[k] : undefined), obj);
 }
 
-type Ctx = { locale: Locale; setLocale: (l: Locale) => void; t: (key: string, vars?: Record<string, string | number>) => string; tr: <T = unknown>(key: string) => T };
+type Ctx = { locale: Locale; setLocale: (l: Locale) => void; t: (key: string, vars?: Record<string, string | number>) => string; tr: <T = unknown>(key: string) => T; L: (group: string, value?: string | null) => string };
 const I18nContext = createContext<Ctx | null>(null);
 
 function initial(): Locale {
@@ -51,7 +51,13 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       return s as string;
     };
     const tr = <T,>(key: string) => (get(d, key) ?? get(uz, key)) as T;
-    return { locale, setLocale, t, tr };
+    /** Holat/tur kabi tizim qiymatlarini tanlangan tilga o'giradi: L('userStatus', 'ACTIVE') → "Faol" */
+    const L = (group: string, value?: string | null) => {
+      if (!value) return '';
+      const m = tr<Record<string, string> | undefined>(`labels.${group}`);
+      return m?.[value] ?? value;
+    };
+    return { locale, setLocale, t, tr, L };
   }, [locale, setLocale]);
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
 }
@@ -65,5 +71,6 @@ export function useI18n() {
 /** Fan nomini tanlangan tilda qaytaradi */
 export function subjectName(s: { nameUz: string; nameRu: string; nameEn: string } | null | undefined, l: Locale) {
   if (!s) return '';
-  return l === 'ru' ? s.nameRu : l === 'en' ? s.nameEn : s.nameUz;
+  // ruscha/inglizcha nom kiritilmagan bo'lsa — o'zbekcha ko'rsatiladi
+  return (l === 'ru' ? s.nameRu : l === 'en' ? s.nameEn : s.nameUz) || s.nameUz;
 }

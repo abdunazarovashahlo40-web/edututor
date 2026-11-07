@@ -7,11 +7,12 @@ export async function audit(
   entityType: string,
   entityId?: string | null,
   meta?: Record<string, unknown>,
+  actorId?: string | null, // so'rovda foydalanuvchi bo'lmaganda (kirish, webhook) kim ekanini aniq ko'rsatish
 ) {
   try {
     await prisma.auditLog.create({
       data: {
-        actorId: req?.user?.id ?? null,
+        actorId: actorId ?? req?.user?.id ?? null,
         action,
         entityType,
         entityId: entityId ?? null,

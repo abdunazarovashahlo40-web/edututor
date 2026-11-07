@@ -10,9 +10,12 @@ import { notify } from '../../lib/notify';
 import { getSettings, invalidateSettings } from '../../lib/settings';
 import { invalidateSubjects } from '../subjects/subjects.routes';
 import { recomputeRating } from '../reviews/reviews.routes';
+import { mountAdminExtra } from './admin.extra.routes';
 
 export const adminRouter = Router();
 adminRouter.use(requireAuth, requireRole('ADMIN'));
+// batafsil ko'rinishlar va foydalanuvchi nomidan amallar (oldin ro'yxatdan keyin emas — '/users/:id' tartibi muhim emas)
+mountAdminExtra(adminRouter);
 
 const pq = z.object({
   page: z.coerce.number().int().min(1).default(1),
@@ -20,6 +23,8 @@ const pq = z.object({
   q: z.string().max(80).optional(),
   status: z.string().optional(),
   role: z.string().optional(),
+  user: z.string().max(40).optional(), // bitta foydalanuvchiga tegishli yozuvlar
+  provider: z.string().optional(),
 });
 
 /* ------------------------------ Statistika ------------------------------ */
@@ -46,6 +51,22 @@ adminRouter.get(
       const list = newUsers.filter((u) => u.createdAt.toISOString().slice(0, 10) === d);
       days.push({ date: d, students: list.filter((u) => u.role === 'STUDENT').length, teachers: list.filter((u) => u.role === 'TEACHER').length });
     }
+    // Oxirgi 6 oy: oyma-oy tushum (to'langan summa) va platforma ulushi
+    const sixAgo = new Date();
+    sixAgo.setUTCMonth(sixAgo.getUTCMonth() - 5, 1);
+    sixAgo.setUTCHours(0, 0, 0, 0);
+    const earnings = await prisma.teacherEarning.findMany({
+      where: { status: { not: 'reversed' }, createdAt: { gte: sixAgo } },
+      select: { createdAt: true, gross: true, commission: true },
+    });
+    const months: { month: string; gross: number; commission: number }[] = [];
+    for (let i = 0; i < 6; i++) {
+      const d = new Date(sixAgo);
+      d.setUTCMonth(sixAgo.getUTCMonth() + i);
+      const key = d.toISOString().slice(0, 7);
+      const list = earnings.filter((e) => e.createdAt.toISOString().slice(0, 7) === key);
+      months.push({ month: key, gross: list.reduce((a, e) => a + Number(e.gross), 0), commission: list.reduce((a, e) => a + Number(e.commission), 0) });
+    }
     const r = (role: string) => roles.find((x) => x.role === role)?._count._all ?? 0;
     ok(res, {
       totalUsers: roles.reduce((a, x) => a + x._count._all, 0),
@@ -63,6 +84,7 @@ adminRouter.get(
       openComplaints,
       refundRequests,
       growth: days,
+      revenueByMonth: months,
     });
   }),
 );
@@ -137,7 +159,7 @@ adminRouter.get(
       }),
       prisma.teacherProfile.count({ where }),
     ]);
-    ok(res, items, pageMeta(q.page, q.limit, total));
+    ok(res, items.map(({ identityHash, ...t }) => ({ ...t, hasIdentity: !!identityHash })), pageMeta(q.page, q.limit, total));
   }),
 );
 
@@ -226,7 +248,7 @@ adminRouter.get(
     const [items, total] = await Promise.all([
       prisma.lesson.findMany({
         where,
-        include: { subject: { select: { nameUz: true } }, teacher: { select: { user: { select: { fullName: true } } } }, _count: { select: { bookings: true } } },
+        include: { subject: { select: { nameUz: true, nameRu: true, nameEn: true } }, teacher: { select: { id: true, user: { select: { fullName: true } } } }, _count: { select: { bookings: true } } },
         orderBy: { createdAt: 'desc' },
         ...paginate(q.page, q.limit),
       }),
@@ -251,7 +273,11 @@ adminRouter.get(
   '/bookings',
   ah(async (req, res) => {
     const q = parse(pq, req.query);
-    const where: Prisma.BookingWhereInput = q.status ? { status: q.status as any } : {};
+    const and: Prisma.BookingWhereInput[] = [];
+    if (q.status) and.push({ status: q.status as any });
+    if (q.user) and.push({ OR: [{ studentId: q.user }, { teacher: { userId: q.user } }] });
+    if (q.q) and.push({ OR: [{ lesson: { title: { contains: q.q, mode: 'insensitive' } } }, { student: { fullName: { contains: q.q, mode: 'insensitive' } } }, { teacher: { user: { fullName: { contains: q.q, mode: 'insensitive' } } } }] });
+    const where: Prisma.BookingWhereInput = and.length ? { AND: and } : {};
     const [items, total] = await Promise.all([
       prisma.booking.findMany({
         where,
@@ -278,12 +304,14 @@ adminRouter.get(
     const q = parse(pq, req.query);
     const where: Prisma.PaymentWhereInput = {
       ...(q.status ? { status: q.status as any } : {}),
-      ...(q.q ? { receiptNo: { contains: q.q, mode: 'insensitive' } } : {}),
+      ...(q.provider ? { provider: q.provider as any } : {}),
+      ...(q.user ? { userId: q.user } : {}),
+      ...(q.q ? { OR: [{ receiptNo: { contains: q.q, mode: 'insensitive' } }, { user: { fullName: { contains: q.q, mode: 'insensitive' } } }] } : {}),
     };
     const [items, total] = await Promise.all([
       prisma.payment.findMany({
         where,
-        include: { user: { select: { fullName: true } }, booking: { select: { lesson: { select: { title: true } } } }, refunds: true },
+        include: { user: { select: { id: true, fullName: true } }, booking: { select: { id: true, lesson: { select: { title: true } } } }, refunds: true },
         orderBy: { createdAt: 'desc' },
         ...paginate(q.page, q.limit),
       }),

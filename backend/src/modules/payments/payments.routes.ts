@@ -9,6 +9,7 @@ import { getTeacherId } from '../../common/owners';
 import { fromTiyin, toTiyin } from '../../common/money';
 import { getSettings } from '../../lib/settings';
 import { notify } from '../../lib/notify';
+import { receiptPage } from '../../lib/receipt';
 import { afterPaidNotify, assertPaymentOwner, createCheckout, markFailed, markPaid } from './payments.service';
 import { paymeHandler } from './payme';
 import { clickComplete, clickPrepare } from './click';
@@ -94,22 +95,9 @@ paymentsRouter.get(
   '/:id/receipt',
   ah(async (req, res) => {
     const p = await assertPaymentOwner(req.user!.id, req.user!.role, req.params.id);
-    const fmt = (d?: Date | null) =>
-      d ? new Intl.DateTimeFormat('uz-UZ', { timeZone: 'Asia/Tashkent', dateStyle: 'long', timeStyle: 'short' }).format(d) : '—';
-    const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
-    const amount = Number(p.amount).toLocaleString('ru-RU');
-    res.type('html').send(`<!doctype html><html lang="uz"><head><meta charset="utf-8"><title>Chek ${p.receiptNo}</title>
-<style>body{font-family:Inter,Arial,sans-serif;background:#F8FAFF;color:#111827;padding:32px}.c{max-width:520px;margin:auto;background:#fff;border-radius:20px;padding:28px;box-shadow:0 10px 30px rgba(109,40,217,.1)}
-h1{color:#6D28D9;margin:0 0 4px}.m{color:#64748B;font-size:13px}table{width:100%;margin-top:18px;border-collapse:collapse}td{padding:9px 0;border-bottom:1px dashed #E5E7EB}td:last-child{text-align:right;font-weight:600}
-.t{font-size:22px;color:#6D28D9}.s{display:inline-block;padding:4px 10px;border-radius:99px;background:#DCFCE7;color:#166534;font-size:12px;font-weight:700;text-transform:uppercase}@media print{button{display:none}}</style></head>
-<body><div class="c"><h1>🎓 EduTutor</h1><div class="m">To'lov cheki / Квитанция об оплате</div>
-<table><tr><td>Chek raqami</td><td>${p.receiptNo}</td></tr><tr><td>Holat</td><td><span class="s">${p.status}</span></td></tr>
-<tr><td>To'lovchi</td><td>${esc(p.user.fullName)}</td></tr><tr><td>Dars</td><td>${esc(p.booking.lesson.title)}</td></tr>
-<tr><td>O'qituvchi</td><td>${esc(p.booking.teacher.user.fullName)}</td></tr><tr><td>Dars vaqti</td><td>${fmt(p.booking.session.startAt)}</td></tr>
-<tr><td>To'lov usuli</td><td>${p.provider.toUpperCase()}</td></tr><tr><td>To'langan vaqt</td><td>${fmt(p.paidAt)}</td></tr>
-<tr><td>Summa</td><td class="t">${amount} so'm</td></tr></table>
-<p class="m" style="margin-top:18px">Karta ma'lumotlari EduTutor serverlarida saqlanmaydi. Savollar: support@edututor.uz</p>
-<button onclick="print()" style="margin-top:8px;padding:10px 18px;border:0;border-radius:12px;background:#6D28D9;color:#fff;font-weight:600;cursor:pointer">Chop etish</button></div></body></html>`);
+    const q = String(req.query.lang ?? '');
+    const lang = (['uz', 'ru', 'en'].includes(q) ? q : p.user.locale) as 'uz' | 'ru' | 'en';
+    res.type('html').send(receiptPage(p, lang));
   }),
 );
 

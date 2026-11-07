@@ -1,3 +1,4 @@
+import { audit } from '../../lib/audit';
 /**
  * Ilova qulfi (bank ilovalaridagidek):
  *  - O'rnatilgan ilova (PWA) ichida foydalanuvchi 4 xonali kirish kodi (PIN) o'rnatadi
@@ -50,6 +51,7 @@ appLockRouter.post(
       ? await prisma.appDevice.update({ where: { id: device.id }, data: { pinHash, pinFailed: 0 } })
       : await prisma.appDevice.create({ data: { userId: req.user!.id, name: b.deviceName, pinHash } });
     await prisma.authSession.update({ where: { id: session.id }, data: { deviceId: d.id, requiresUnlock: false } });
+    await audit(req, 'applock.setup', 'AppDevice', d.id);
     ok(res, { deviceId: d.id, hasPin: true, hasBiometric: !!d.credentialId });
   }),
 );
@@ -80,6 +82,7 @@ appLockRouter.post(
           prisma.authSession.update({ where: { id: session.id }, data: { revokedAt: new Date(), deviceId: null } }),
         ]);
         clearAuthCookies(res);
+        await audit(req, 'applock.blocked', 'AppDevice', device.id);
         throw unauthorized('PIN_BLOCKED', 'Ko\'p noto\'g\'ri urinish. Parol bilan qayta kiring');
       }
       await prisma.appDevice.update({ where: { id: device.id }, data: { pinFailed: fails } });
@@ -101,6 +104,7 @@ appLockRouter.post(
     if (device) {
       await prisma.authSession.updateMany({ where: { deviceId: device.id }, data: { deviceId: null, requiresUnlock: false } });
       await prisma.appDevice.delete({ where: { id: device.id } });
+      await audit(req, 'applock.disable', 'AppDevice', device.id);
     }
     ok(res, { disabled: true, sessionId: session.id });
   }),

@@ -1,5 +1,8 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, Route, Routes, useLocation } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { homeFor, useAuth } from './store/auth';
+import { isStandalone } from './hooks/useMedia';
+import { BackButtonGuard } from './features/nav/BackButtonGuard';
 import { useEffect } from 'react';
 import { PublicLayout } from './layouts/PublicLayout';
 import { StudentLayout, TeacherLayout, AdminLayout } from './layouts/RoleLayouts';
@@ -8,6 +11,16 @@ import { AppLockGate } from './features/applock/AppLock';
 import { FullPageSpinner } from './components/ui';
 
 const Landing = lazy(() => import('./pages/public/Landing'));
+
+/** O'rnatilgan ilova (PWA) ochilganda kirgan foydalanuvchi to'g'ridan-to'g'ri o'z kabinetiga tushadi */
+function HomeGate() {
+  const { me, loading } = useAuth();
+  if (isStandalone()) {
+    if (loading) return <FullPageSpinner />;
+    if (me) return <Navigate to={homeFor(me.role)} replace />;
+  }
+  return <Landing />;
+}
 const Teachers = lazy(() => import('./pages/public/Teachers'));
 const TeacherProfile = lazy(() => import('./pages/public/TeacherProfile'));
 const SandboxPay = lazy(() => import('./pages/public/SandboxPay'));
@@ -39,6 +52,8 @@ const TeacherBookings = lazy(() => import('./pages/student/Lessons').then((m) =>
 const Admin = {
   Dashboard: lazy(() => import('./pages/admin/AdminPages').then((m) => ({ default: m.AdminDashboard }))),
   Users: lazy(() => import('./pages/admin/AdminPages').then((m) => ({ default: m.AdminUsers }))),
+  UserDetail: lazy(() => import('./pages/admin/AdminPages').then((m) => ({ default: m.AdminUserDetail }))),
+  TeacherDetail: lazy(() => import('./pages/admin/AdminPages').then((m) => ({ default: m.AdminTeacherDetail }))),
   Teachers: lazy(() => import('./pages/admin/AdminPages').then((m) => ({ default: m.AdminTeachers }))),
   Subjects: lazy(() => import('./pages/admin/AdminPages').then((m) => ({ default: m.AdminSubjects }))),
   Lessons: lazy(() => import('./pages/admin/AdminPages').then((m) => ({ default: m.AdminLessons }))),
@@ -63,11 +78,12 @@ export default function App() {
   return (
     <BrowserRouter>
       <ScrollToTop />
+      <BackButtonGuard />
       <AppLockGate>
         <Suspense fallback={<FullPageSpinner />}>
           <Routes>
             <Route element={<PublicLayout />}>
-              <Route index element={<Landing />} />
+              <Route index element={<HomeGate />} />
               <Route path="teachers" element={<Teachers />} />
               <Route path="teachers/:id" element={<TeacherProfile />} />
               <Route path="p/:token" element={<ParentReport />} />
@@ -112,7 +128,9 @@ export default function App() {
             <Route path="admin" element={<RequireRole roles={['ADMIN']}><AdminLayout /></RequireRole>}>
               <Route index element={<Admin.Dashboard />} />
               <Route path="users" element={<Admin.Users />} />
+              <Route path="users/:id" element={<Admin.UserDetail />} />
               <Route path="teachers" element={<Admin.Teachers />} />
+              <Route path="teachers/:id" element={<Admin.TeacherDetail />} />
               <Route path="subjects" element={<Admin.Subjects />} />
               <Route path="lessons" element={<Admin.Lessons />} />
               <Route path="bookings" element={<Admin.Bookings />} />

@@ -132,6 +132,7 @@ export async function publicMe(userId: string, sid: string) {
       status: true,
       locale: true,
       emailVerifiedAt: true,
+      notifyPrefs: true,
       createdAt: true,
       studentProfile: true,
       teacherProfile: {

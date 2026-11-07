@@ -21,6 +21,18 @@ import { LogoMark } from '../../components/Logo';
 const BG_LOCK_MS = 30_000; // fon rejimida 30 soniyadan ko'p tursa — qulf
 const SKIP_KEY = 'et_applock_skip';
 const SESSION_KEY = 'et_unlocked'; // ilova oynasi yopilsa o'chadi (sessionStorage)
+const RESET_KEY = 'et_pin_reset'; // "Kodni unutdim" → parol bilan kirgach yangi kod so'raladi
+
+function flag(key: string, value?: string | null) {
+  try {
+    if (value === undefined) return localStorage.getItem(key);
+    if (value === null) localStorage.removeItem(key);
+    else localStorage.setItem(key, value);
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
 
 function markUnlocked() {
   try {
@@ -74,9 +86,15 @@ export function AppLockGate({ children }: { children: ReactNode }) {
     return () => document.removeEventListener('visibilitychange', onVis);
   }, [me?.appLock.hasPin, refetch]);
 
+  // "Kodni unutdim" dan keyin parol bilan kirildi — darhol yangi kod o'rnatish
+  const [resetOpen, setResetOpen] = useState(false);
+  useEffect(() => {
+    if (me && !me.appLock.locked && flag(RESET_KEY) === '1') setResetOpen(true);
+  }, [me]);
+
   // O'rnatilgan ilovada birinchi marta — PIN o'rnatishni taklif qilish
   useEffect(() => {
-    if (!me || me.appLock.hasPin || me.appLock.locked) return;
+    if (!me || me.appLock.hasPin || me.appLock.locked || flag(RESET_KEY) === '1') return;
     let skipped = false;
     try {
       skipped = localStorage.getItem(SKIP_KEY) === me.id;
@@ -91,7 +109,23 @@ export function AppLockGate({ children }: { children: ReactNode }) {
     <>
       {children}
       <AnimatePresence>
-        {setupOpen && (
+        {resetOpen && (
+          <SetupAppLock
+            reset
+            onDone={() => {
+              flag(RESET_KEY, null);
+              setResetOpen(false);
+            }}
+            onSkip={async () => {
+              // yangi kod o'rnatilmasa — eski (unutilgan) kod bilan qulflanib qolmasligi uchun qulf o'chiriladi
+              flag(RESET_KEY, null);
+              setResetOpen(false);
+              await post('/auth/app-lock/disable').catch(() => undefined);
+              await refetch();
+            }}
+          />
+        )}
+        {setupOpen && !resetOpen && (
           <SetupAppLock
             onDone={() => setSetupOpen(false)}
             onSkip={() => {
@@ -181,6 +215,7 @@ function LockScreen() {
       <button
         className="mt-4 text-sm font-bold text-brand-700"
         onClick={async () => {
+          flag(RESET_KEY, '1');
           await logout();
           nav('/login');
         }}
@@ -191,7 +226,7 @@ function LockScreen() {
   );
 }
 
-export function SetupAppLock({ onDone, onSkip }: { onDone: () => void; onSkip?: () => void }) {
+export function SetupAppLock({ onDone, onSkip, reset }: { onDone: () => void; onSkip?: () => void; reset?: boolean }) {
   const { t } = useI18n();
   const { refetch } = useAuth();
   const [stage, setStage] = useState<'pin' | 'repeat' | 'bio'>('pin');
@@ -262,7 +297,7 @@ export function SetupAppLock({ onDone, onSkip }: { onDone: () => void; onSkip?: 
         </>
       ) : (
         <>
-          <h2 className="text-xl font-extrabold">{stage === 'pin' ? t('lock.setupTitle') : t('lock.repeat')}</h2>
+          <h2 className="text-xl font-extrabold">{stage === 'pin' ? (reset ? t('lock.resetTitle') : t('lock.setupTitle')) : t('lock.repeat')}</h2>
           <p className="mb-8 mt-2 max-w-xs text-center text-sm text-muted">{t('lock.setupText')}</p>
           <PinPad value={pin} onChange={(v) => (setError(null), setPin(v))} error={!!error} />
           <p className="mt-5 h-5 text-sm font-semibold text-danger">{error}</p>

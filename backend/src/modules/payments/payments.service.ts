@@ -1,3 +1,4 @@
+import { audit } from '../../lib/audit';
 import type { PaymentProvider } from '@prisma/client';
 import { prisma, type Tx } from '../../lib/prisma';
 import { env } from '../../config/env';
@@ -6,6 +7,8 @@ import { fromTiyin, percentOf, splitCommission, toTiyin } from '../../common/mon
 import { badRequest, conflict, forbidden, notFound } from '../../common/errors';
 import { commissionPercent, getSettings } from '../../lib/settings';
 import { notify } from '../../lib/notify';
+import { sendMail } from '../../lib/mailer';
+import { receiptMail } from '../../lib/receipt';
 
 /**
  * Provayderdan mustaqil to'lov arxitekturasi:
@@ -80,7 +83,11 @@ export async function afterPaidNotify(paymentId: string) {
     include: { booking: { include: { teacher: { select: { userId: true } }, lesson: { select: { title: true } } } } },
   });
   if (!p) return;
-  await notify(p.userId, 'payment.paid', 'To\'lov qabul qilindi', `${p.booking.lesson.title} — ${Number(p.amount).toLocaleString('ru-RU')} so'm`, '/student/payments', { paymentId: p.id });
+  await audit(null, 'payment.paid', 'Payment', p.id, { amount: p.amount.toString(), provider: p.provider }, p.userId);
+  // Chek emailga — foydalanuvchi o'chirib qo'ymagan bo'lsa
+  const prefs = (await prisma.user.findUnique({ where: { id: p.userId }, select: { notifyPrefs: true } }))?.notifyPrefs as { email?: boolean } | null;
+  if (prefs?.email !== false) await sendReceiptEmail(p.id).catch(() => undefined);
+  await notify(p.userId, 'payment.paid', 'To\'lov qabul qilindi', `${p.booking.lesson.title} — ${Number(p.amount).toLocaleString('ru-RU')} so'm`, `/student/payments?receipt=${p.id}`, { paymentId: p.id });
   await notify(
     p.booking.teacher.userId,
     'booking.new',
@@ -89,6 +96,20 @@ export async function afterPaidNotify(paymentId: string) {
     '/teacher/bookings',
     { bookingId: p.bookingId },
   );
+}
+
+/** Chekni foydalanuvchi emailiga yuborish (to'lovdan keyin avtomatik yoki admin qayta yuboradi) */
+export async function sendReceiptEmail(paymentId: string) {
+  const p = await prisma.payment.findUnique({
+    where: { id: paymentId },
+    include: {
+      user: { select: { fullName: true, email: true, locale: true, notifyPrefs: true } },
+      booking: { include: { lesson: { select: { title: true } }, teacher: { select: { user: { select: { fullName: true } } } }, session: { select: { startAt: true } } } },
+    },
+  });
+  if (!p?.user.email) return false;
+  await sendMail(receiptMail(p.user.email, p, p.user.locale));
+  return true;
 }
 
 export async function markFailed(paymentId: string, status: 'failed' | 'cancelled' = 'failed') {
@@ -160,7 +181,7 @@ export async function assertPaymentOwner(userId: string, role: string, paymentId
           teacher: { select: { user: { select: { fullName: true } } } },
         },
       },
-      user: { select: { fullName: true, email: true } },
+      user: { select: { fullName: true, email: true, locale: true } },
       refunds: true,
     },
   });

@@ -19,10 +19,10 @@ export default function Progress() {
       <PageHeader title={t('menu.progress')} />
       <ParentLinkCard />
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <StatCard icon={<Trophy className="h-5 w-5" />} label={t('student.completedLessons')} value={d.completedLessons} />
+        <StatCard to="/student/lessons?tab=past" icon={<Trophy className="h-5 w-5" />} label={t('student.completedLessons')} value={d.completedLessons} />
         <StatCard icon={<Timer className="h-5 w-5" />} label={t('student.hours')} value={d.hours} tone="blue" />
-        <StatCard icon={<BookOpenCheck className="h-5 w-5" />} label={t('menu.homework')} value={`${d.homework.done}/${d.homework.total}`} tone="green" />
-        <StatCard icon={<Award className="h-5 w-5" />} label={t('student.avgScore')} value={d.avgScore != null ? `${d.avgScore}%` : '—'} tone="amber" />
+        <StatCard to="/student/homework" icon={<BookOpenCheck className="h-5 w-5" />} label={t('menu.homework')} value={`${d.homework.done}/${d.homework.total}`} tone="green" />
+        <StatCard to="/student/homework" icon={<Award className="h-5 w-5" />} label={t('student.avgScore')} value={d.avgScore != null ? `${d.avgScore}%` : '—'} tone="amber" />
       </div>
       <div className="grid gap-4 lg:grid-cols-[1fr_1.4fr]">
         <Card className="flex flex-col items-center justify-center py-8">

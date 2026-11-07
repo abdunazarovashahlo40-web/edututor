@@ -9,7 +9,7 @@ import { dateTime, errorText, money } from '../../utils/format';
 import { useToast } from '../../hooks/useToast';
 
 export default function Earnings() {
-  const { t, locale } = useI18n();
+  const { t, locale, L } = useI18n();
   const qc = useQueryClient();
   const toast = useToast();
   const q = useQuery({ queryKey: ['earnings'], queryFn: () => get<any>('/payments/earnings/me') });
@@ -56,7 +56,7 @@ export default function Earnings() {
                 {q.data.payouts.map((p: any) => (
                   <div key={p.id} className="flex items-center justify-between py-2.5 text-sm">
                     <span>{dateTime(p.createdAt, locale)} · {p.destination}</span>
-                    <span className="flex items-center gap-2 font-bold">{money(p.amount, locale)} <Badge tone={p.status === 'paid' ? 'green' : p.status === 'rejected' ? 'red' : 'yellow'}>{p.status}</Badge></span>
+                    <span className="flex items-center gap-2 font-bold">{money(p.amount, locale)} <Badge tone={p.status === 'paid' ? 'green' : p.status === 'rejected' ? 'red' : 'yellow'}>{L('payout', p.status)}</Badge></span>
                   </div>
                 ))}
               </div>

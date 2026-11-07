@@ -6,13 +6,14 @@ import { useI18n, subjectName } from '../../i18n';
 import { useAuth } from '../../store/auth';
 import { Avatar, Badge, Button, Card, Checkbox, Field, FullPageSpinner, Input, PageHeader, Textarea, statusTone } from '../../components/ui';
 import { VerificationBanner } from '../../components/VerificationBanner';
+import { DocVerify } from '../../features/teacher/DocVerify';
 import { errorText } from '../../utils/format';
 import { useToast } from '../../hooks/useToast';
 import { cn } from '../../utils/cn';
 import type { Subject } from '../../types';
 
 export default function TeacherProfileEdit() {
-  const { t, locale } = useI18n();
+  const { t, locale, L } = useI18n();
   const { refetch } = useAuth();
   const qc = useQueryClient();
   const toast = useToast();
@@ -21,7 +22,7 @@ export default function TeacherProfileEdit() {
   const subjects = useQuery({ queryKey: ['subjects'], queryFn: () => get<Subject[]>('/subjects'), staleTime: 300_000 });
   const [f, setF] = useState<any>(null);
   const [subs, setSubs] = useState<string[]>([]);
-  const [cert, setCert] = useState<{ title: string; issuer: string; year: string; isVerificationDoc: boolean; file?: File }>({ title: '', issuer: '', year: '', isVerificationDoc: true });
+  const [cert, setCert] = useState<{ title: string; issuer: string; year: string; isVerificationDoc: boolean; docType: string; docNumber: string; file?: File }>({ title: '', issuer: '', year: '', isVerificationDoc: true, docType: 'diploma', docNumber: '' });
   const [missing, setMissing] = useState<string[]>([]);
   const [busy, setBusy] = useState('');
 
@@ -82,7 +83,7 @@ export default function TeacherProfileEdit() {
           <div>
             <p className="text-xl font-extrabold">{p.user.fullName}</p>
             <p className="text-sm text-muted">{p.user.email}</p>
-            <Badge tone={statusTone[p.verification]} className="mt-1">{p.verification}</Badge>
+            <Badge tone={statusTone[p.verification]} className="mt-1">{L('verification', p.verification)}</Badge>
           </div>
         </div>
       </Card>
@@ -130,6 +131,8 @@ export default function TeacherProfileEdit() {
         <Button className="mt-4" variant="secondary" disabled={!subs.length} loading={busy === 'subjects'} onClick={() => run('subjects', () => put('/teachers/me/subjects', { subjects: subs.map((subjectId) => ({ subjectId })) }))}>{t('common.save')}</Button>
       </Card>
 
+      <DocVerify identityType={p.identityType} identityLast4={p.identityLast4} />
+
       <Card>
         <h2 className="mb-3 text-lg font-extrabold">{t('teacher.certificates')}</h2>
         <div className="mb-4 space-y-2">
@@ -138,7 +141,7 @@ export default function TeacherProfileEdit() {
               <FileCheck2 className="h-5 w-5 text-brand-600" />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-bold">{c.title}</p>
-                <p className="text-xs text-muted">{[c.issuer, c.year].filter(Boolean).join(' · ')} {c.isVerificationDoc && <Badge tone="yellow" className="ml-1">{t('teacher.verificationDoc')}</Badge>}</p>
+                <p className="text-xs text-muted">{[c.issuer, c.year, c.docNumber && `№ ${c.docNumber}`].filter(Boolean).join(' · ')} {c.isVerificationDoc && <Badge tone="yellow" className="ml-1">{t('teacher.verificationDoc')}</Badge>} {c.checkStatus && c.checkStatus !== 'unchecked' && <Badge tone={c.checkStatus === 'verified' ? 'green' : 'red'} className="ml-1">{t(`adm.check.${c.checkStatus}`)}</Badge>}</p>
               </div>
               {c.fileUrl && <a href={c.fileUrl} target="_blank" rel="noreferrer" className="text-xs font-bold text-brand-700">{t('common.view')}</a>}
               <button onClick={() => run('cert-del', () => del(`/teachers/me/certificates/${c.id}`))} className="grid h-8 w-8 place-items-center rounded-lg text-danger hover:bg-red-50" aria-label={t('common.delete')}><Trash2 className="h-4 w-4" /></button>
@@ -149,6 +152,12 @@ export default function TeacherProfileEdit() {
           <Field label={t('teacher.certTitle')}><Input value={cert.title} onChange={(e) => setCert({ ...cert, title: e.target.value })} /></Field>
           <Field label={t('teacher.issuer')}><Input value={cert.issuer} onChange={(e) => setCert({ ...cert, issuer: e.target.value })} /></Field>
           <Field label={t('teacher.year')}><Input type="number" value={cert.year} onChange={(e) => setCert({ ...cert, year: e.target.value })} /></Field>
+          <Field label={t('doc.type')}>
+            <select className="h-11 w-full rounded-xl border border-line bg-white px-3 text-sm" value={cert.docType} onChange={(e) => setCert({ ...cert, docType: e.target.value })}>
+              {['diploma', 'language', 'certificate', 'category', 'other'].map((k) => <option key={k} value={k}>{t(`doc.types.${k}`)}</option>)}
+            </select>
+          </Field>
+          <Field label={`${t('doc.number')} (${t('common.optional')})`}><Input value={cert.docNumber} onChange={(e) => setCert({ ...cert, docNumber: e.target.value })} /></Field>
           <Field label={t('common.file')} hint="PDF, JPG, PNG · ≤10MB"><Input type="file" accept=".pdf,.png,.jpg,.jpeg,.webp" onChange={(e) => setCert({ ...cert, file: e.target.files?.[0] })} className="py-2" /></Field>
           <Checkbox label={t('teacher.verificationDoc')} checked={cert.isVerificationDoc} onChange={(e) => setCert({ ...cert, isVerificationDoc: e.target.checked })} />
           <Button variant="secondary" icon={<Upload className="h-4 w-4" />} disabled={cert.title.length < 2} loading={busy === 'cert'} onClick={() => run('cert', async () => {
@@ -156,10 +165,12 @@ export default function TeacherProfileEdit() {
             fd.append('title', cert.title);
             if (cert.issuer) fd.append('issuer', cert.issuer);
             if (cert.year) fd.append('year', cert.year);
+            fd.append('docType', cert.docType);
+            if (cert.docNumber) fd.append('docNumber', cert.docNumber);
             fd.append('isVerificationDoc', String(cert.isVerificationDoc));
             if (cert.file) fd.append('file', cert.file);
             await upload('/teachers/me/certificates', fd);
-            setCert({ title: '', issuer: '', year: '', isVerificationDoc: false });
+            setCert({ title: '', issuer: '', year: '', isVerificationDoc: false, docType: 'diploma', docNumber: '' });
           })}>{t('teacher.addCert')}</Button>
         </div>
       </Card>

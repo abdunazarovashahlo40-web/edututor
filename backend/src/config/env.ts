@@ -40,6 +40,9 @@ const schema = z.object({
   SMTP_PORT: z.coerce.number().default(587),
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
+  // Davlat reyestri (diplom/sertifikat) bilan rasmiy ulanish berilganda to'ldiriladi — bo'sh bo'lsa qo'lda tekshiruv
+  REGISTRY_API_URL: z.string().url().optional(),
+  REGISTRY_API_KEY: z.string().optional(),
   STORAGE_DRIVER: z.enum(['local', 'supabase']).default('local'),
   SUPABASE_URL: z.string().optional(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),

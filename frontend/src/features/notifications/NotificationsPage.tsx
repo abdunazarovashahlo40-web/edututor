@@ -1,3 +1,4 @@
+import { localizeNotif } from './notifText';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -33,8 +34,8 @@ export default function NotificationsPage() {
                   <I className="h-5 w-5" />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="font-bold text-ink">{n.title}</p>
-                  {n.body && <p className="text-sm text-muted">{n.body}</p>}
+                  <p className="font-bold text-ink">{localizeNotif(n, t).title}</p>
+                  {n.body && <p className="text-sm text-muted">{localizeNotif(n, t).body}</p>}
                   <p className="mt-1 text-xs text-muted">{dateTime(n.createdAt, locale)}</p>
                 </div>
               </div>

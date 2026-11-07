@@ -82,6 +82,7 @@ authRouter.post(
       },
     });
     const devCode = await createOtp(user, 'EMAIL_VERIFY');
+    await audit(req, 'auth.register', 'User', user.id, { role: user.role }, user.id);
     ok(res, { email: user.email, needsVerification: true, devCode }, undefined, 201);
   }),
 );
@@ -139,7 +140,7 @@ authRouter.post(
         where: { id: user.id },
         data: { failedLogins: failed, lockedUntil: failed >= 5 ? new Date(Date.now() + 15 * 60_000) : null },
       });
-      if (failed >= 5) await audit(req, 'auth.lockout', 'User', user.id);
+      await audit(req, failed >= 5 ? 'auth.lockout' : 'auth.login_failed', 'User', user.id, { attempt: failed }, user.id);
       throw generic;
     }
     if (user.status === 'SUSPENDED') throw forbidden('ACCOUNT_SUSPENDED', 'Hisob bloklangan');
@@ -151,6 +152,7 @@ authRouter.post(
       });
     }
     const s = await issueSession(req, res, user, b.remember);
+    await audit(req, 'auth.login', 'User', user.id, { method: 'password', device: !!s.deviceId }, user.id);
     ok(res, await publicMe(user.id, s.id));
   }),
 );
@@ -273,6 +275,7 @@ authRouter.post(
         data: { revokedAt: new Date() },
       }),
     ]);
+    await audit(req, 'auth.password_change', 'User', user.id);
     ok(res, { changed: true });
   }),
 );

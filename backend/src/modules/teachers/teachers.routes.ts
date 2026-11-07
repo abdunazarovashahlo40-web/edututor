@@ -11,6 +11,7 @@ import { computeSlots, utcToLocalParts } from '../../common/time';
 import { audit } from '../../lib/audit';
 import { notify } from '../../lib/notify';
 import { isOnline, onlineUserIds } from '../../lib/realtime';
+import { type FoundDoc, OFFICIAL_SOURCES, PASSPORT_RE, PINFL_RE, identityHash, lookupDocuments, signFound, verifyFound } from '../../lib/registry';
 import { getTeacherId } from '../../common/owners';
 
 export const teachersRouter = Router();
@@ -138,7 +139,8 @@ meRouter.get(
         user: { select: { fullName: true, avatarUrl: true, email: true, phone: true } },
       },
     });
-    ok(res, p);
+    const { identityHash: _h, ...rest } = p; // xesh mijozga berilmaydi
+    ok(res, rest);
   }),
 );
 
@@ -209,6 +211,8 @@ meRouter.post(
           .enum(['true', 'false'])
           .optional()
           .transform((v) => v === 'true'),
+        docType: z.enum(['diploma', 'certificate', 'language', 'category', 'other']).optional(),
+        docNumber: z.string().trim().max(40).optional(),
       }),
       req.body,
     );
@@ -219,6 +223,97 @@ meRouter.post(
       fileUrl = (await saveFile(`certificates/${teacherId}`, req.file)).url;
     }
     const c = await prisma.teacherCertificate.create({ data: { teacherId, ...b, fileUrl } });
+    ok(res, c, undefined, 201);
+  }),
+);
+
+/* ---------- Shaxs va hujjatlarni tasdiqlash ---------- */
+
+/** JSHSHIR yoki pasport (ikkalasi ham ixtiyoriy). To'liq raqam saqlanmaydi: oxirgi 4 belgi + HMAC xesh */
+meRouter.post(
+  '/identity',
+  ah(async (req, res) => {
+    const b = parse(
+      z.object({
+        pinfl: z.string().trim().optional().transform((v) => (v ? v.replace(/\s/g, '') : undefined)),
+        passport: z.string().trim().optional().transform((v) => (v ? v.replace(/\s/g, '').toUpperCase() : undefined)),
+      }),
+      req.body,
+    );
+    if (b.pinfl && !PINFL_RE.test(b.pinfl)) throw badRequest('PINFL_INVALID', 'JSHSHIR 14 ta raqamdan iborat');
+    if (b.passport && !PASSPORT_RE.test(b.passport)) throw badRequest('PASSPORT_INVALID', 'Pasport: 2 ta harf va 7 ta raqam (AA1234567)');
+    const value = b.pinfl ?? b.passport;
+    const teacherId = await getTeacherId(req.user!.id);
+    if (!value) {
+      await prisma.teacherProfile.update({ where: { id: teacherId }, data: { identityType: null, identityLast4: null, identityHash: null } });
+      return ok(res, { saved: false });
+    }
+    const hash = identityHash(value);
+    const dup = await prisma.teacherProfile.count({ where: { identityHash: hash, id: { not: teacherId } } });
+    await prisma.teacherProfile.update({
+      where: { id: teacherId },
+      data: { identityType: b.pinfl ? 'pinfl' : 'passport', identityLast4: value.slice(-4), identityHash: hash },
+    });
+    // Bitta shaxs bir nechta o'qituvchi hisobi ochgan bo'lsa — admin ko'radi
+    if (dup) await audit(req, 'teacher.identity_duplicate', 'TeacherProfile', teacherId, { duplicates: dup });
+    ok(res, { saved: true, type: b.pinfl ? 'pinfl' : 'passport', last4: value.slice(-4) });
+  }),
+);
+
+/** Rasmiy reyestrdan hujjat qidirish. Ulanish bo'lmasa — qo'lda tekshirish uchun rasmiy sahifalar qaytariladi */
+meRouter.post(
+  '/documents/lookup',
+  ah(async (req, res) => {
+    const b = parse(
+      z.object({
+        docType: z.enum(['diploma', 'certificate', 'language', 'category', 'other']),
+        docNumber: z.string().trim().max(40).optional(),
+        pinfl: z.string().trim().optional().transform((v) => (v ? v.replace(/\s/g, '') : undefined)),
+        passport: z.string().trim().optional().transform((v) => (v ? v.replace(/\s/g, '').toUpperCase() : undefined)),
+      }),
+      req.body,
+    );
+    // Faqat to'ldirilgan maydon tekshiriladi — bo'sh maydon xato bermaydi
+    if (b.pinfl && !PINFL_RE.test(b.pinfl)) throw badRequest('PINFL_INVALID', 'JSHSHIR 14 ta raqamdan iborat');
+    if (b.passport && !PASSPORT_RE.test(b.passport)) throw badRequest('PASSPORT_INVALID', 'Pasport: 2 ta harf va 7 ta raqam (AA1234567)');
+    if (!b.docNumber && !b.pinfl && !b.passport) throw badRequest('LOOKUP_EMPTY', 'Kamida bitta maydonni to\'ldiring');
+    const teacherId = await getTeacherId(req.user!.id);
+    let result: { configured: boolean; found: FoundDoc[] } = { configured: false, found: [] };
+    try {
+      result = await lookupDocuments(b);
+    } catch {
+      result = { configured: true, found: [] };
+    }
+    ok(res, {
+      configured: result.configured,
+      found: result.found.map((d) => ({ ...d, token: signFound(teacherId, d) })),
+      sources: OFFICIAL_SOURCES[b.docType],
+    });
+  }),
+);
+
+/** Reyestrda topilgan hujjatni profilga qo'shish ("Yuklab olinsinmi?" → Ha) */
+meRouter.post(
+  '/documents/import',
+  ah(async (req, res) => {
+    const { token } = parse(z.object({ token: z.string().min(20).max(4000) }), req.body);
+    const teacherId = await getTeacherId(req.user!.id);
+    const d = verifyFound(teacherId, token);
+    if (!d) throw badRequest('TOKEN_EXPIRED', 'Qidiruv natijasi eskirgan — qaytadan qidiring');
+    const c = await prisma.teacherCertificate.create({
+      data: {
+        teacherId,
+        title: d.title.slice(0, 160),
+        issuer: d.issuer?.slice(0, 160),
+        year: d.year,
+        docNumber: d.number?.slice(0, 40),
+        fileUrl: d.fileUrl,
+        checkStatus: 'verified',
+        checkSource: d.source,
+        checkedAt: new Date(),
+      },
+    });
+    await audit(req, 'teacher.document_import', 'Certificate', c.id, { source: d.source });
     ok(res, c, undefined, 201);
   }),
 );
@@ -327,7 +422,7 @@ teachersRouter.get(
         verification: true,
         certificates: {
           where: { isVerificationDoc: false },
-          select: { id: true, title: true, issuer: true, year: true },
+          select: { id: true, title: true, issuer: true, year: true, checkStatus: true },
         },
         lessons: {
           where: { status: 'published', deletedAt: null },

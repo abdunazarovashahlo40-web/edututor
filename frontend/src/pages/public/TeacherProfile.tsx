@@ -107,7 +107,7 @@ export default function TeacherProfile() {
                 {d.certificates.length ? (
                   <ul className="space-y-1 text-sm text-ink/80">
                     {d.certificates.map((c: any) => (
-                      <li key={c.id}>• {c.title}{c.issuer && `, ${c.issuer}`}{c.year && ` (${c.year})`}</li>
+                      <li key={c.id} className="flex flex-wrap items-center gap-1.5">• {c.title}{c.issuer && `, ${c.issuer}`}{c.year && ` (${c.year})`}{c.checkStatus === 'verified' && <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700"><ShieldCheck className="h-3 w-3" /> {t('doc.verifiedBadge')}</span>}</li>
                     ))}
                   </ul>
                 ) : (

@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as
 import { AnimatePresence, motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { Logo } from '../../components/Logo';
 import { LanguageSwitcher } from '../../components/LanguageSwitcher';
+import { isStandalone } from '../../hooks/useMedia';
 import { useI18n } from '../../i18n';
 import { cn } from '../../utils/cn';
 
@@ -38,7 +39,8 @@ const CORD_BASE = 52;
 
 export function LampScene({ children, wide }: { children: ReactNode; wide?: boolean }) {
   const { t } = useI18n();
-  const [on, setOn] = useState(() => store<string>('et_lamp', '0') === '1');
+  // O'rnatilgan ilovada (PWA) forma darhol ko'rinadi — chiroq yoniq holda ochiladi
+  const [on, setOn] = useState(() => isStandalone() || store<string>('et_lamp', '0') === '1');
   const [color, setColor] = useState<ColorKey>(() => store<ColorKey>('et_lamp_color', 'violet'));
   const [flicker, setFlicker] = useState(0);
   const y = useMotionValue(0);
@@ -83,13 +85,12 @@ export function LampScene({ children, wide }: { children: ReactNode; wide?: bool
     const d = drag.current;
     if (!d || d.id !== e.pointerId) return;
     drag.current = null;
-    if (d.dy > 28) {
+    if (d.dy > 24) {
       animate(y, 0, { type: 'spring', stiffness: 500, damping: 18 });
       toggle();
-    } else if (d.dy < 8) {
-      pull(); // oddiy bosish
     } else {
-      animate(y, 0, { type: 'spring', stiffness: 500, damping: 18 });
+      // oddiy bosish yoki qisqa tortish — baribir yoqiladi (telefonda barmoq doim biroz siljiydi)
+      pull();
     }
   };
   const onCordCancel = () => {
@@ -291,14 +292,15 @@ export function LampScene({ children, wide }: { children: ReactNode; wide?: bool
 
       {/* kontent: forma */}
       <div className={cn('auth-stage relative z-20 mx-auto px-4 pb-8 pt-[132px] md:pt-[150px]', wide ? 'max-w-[540px]' : 'max-w-[420px]')}>
-        <AnimatePresence mode="wait">
+        {/* blur-filtr animatsiyasi telefonda kechikish berardi — faqat opacity/transform */}
+        <AnimatePresence initial={false}>
           {on ? (
             <motion.div
               key="panel"
-              initial={{ opacity: 0, y: 24, filter: 'blur(10px)' }}
-              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-              exit={{ opacity: 0, y: 12, filter: 'blur(8px)', transition: { duration: 0.25 } }}
-              transition={{ duration: 0.6, delay: 0.25, ease: [0.22, 1, 0.36, 1] }}
+              initial={{ opacity: 0, y: 18, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, transition: { duration: 0.18 } }}
+              transition={{ duration: 0.35, delay: 0.05, ease: [0.22, 1, 0.36, 1] }}
               className="glass rounded-3xl p-5 shadow-[0_30px_80px_-30px_rgba(0,0,0,.8)] md:px-7 md:py-6"
               style={{ boxShadow: `0 30px 80px -30px rgba(0,0,0,.8), 0 0 60px -20px rgb(${rgb} / .45)` }}
             >
@@ -312,7 +314,7 @@ export function LampScene({ children, wide }: { children: ReactNode; wide?: bool
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="mx-auto mt-24 block text-center text-xs font-bold uppercase tracking-[.35em] text-white/35 hover:text-white/60"
+              className="absolute inset-x-0 mx-auto mt-24 block text-center text-xs font-bold uppercase tracking-[.35em] text-white/35 hover:text-white/60"
             >
               {t('auth.pullCord')}
               <span className="mt-2 block text-[10px] tracking-[.2em] text-white/20">( L )</span>

@@ -34,6 +34,13 @@ export async function notify(
   link?: string,
   data?: Record<string, unknown>,
 ) {
+  // Foydalanuvchi sozlamalari: eslatma va xabar bildirishnomalarini o'chirib qo'yishi mumkin
+  if (type === 'lesson.reminder' || type === 'message.new') {
+    const u = await prisma.user.findUnique({ where: { id: userId }, select: { notifyPrefs: true } });
+    const prefs = (u?.notifyPrefs ?? {}) as { reminders?: boolean; messages?: boolean };
+    if (type === 'lesson.reminder' && prefs.reminders === false) return null;
+    if (type === 'message.new' && prefs.messages === false) return null;
+  }
   const n = await prisma.notification.create({
     data: { userId, type, title, body, link, data: (data ?? undefined) as any },
   });

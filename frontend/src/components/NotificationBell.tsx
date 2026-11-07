@@ -8,6 +8,7 @@ import { useI18n } from '../i18n';
 import { relative } from '../utils/format';
 import { cn } from '../utils/cn';
 import { notifIcon } from '../features/notifications/notifMeta';
+import { localizeNotif } from '../features/notifications/notifText';
 
 export function useNotifications(limit = 8) {
   return useQuery({ queryKey: ['notifications', limit], queryFn: () => api<any[]>('/notifications', { query: { limit } }), refetchInterval: 60_000 });
@@ -34,7 +35,7 @@ export function NotificationBell({ base, dark }: { base: string; dark?: boolean 
       </button>
       <AnimatePresence>
         {open && (
-          <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} className="absolute right-0 top-12 z-50 w-[min(360px,calc(100vw-24px))] overflow-hidden rounded-2xl border border-line bg-white shadow-lift">
+          <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} className="fixed inset-x-3 top-[68px] z-50 overflow-hidden rounded-2xl border border-line bg-white shadow-lift md:absolute md:inset-x-auto md:right-0 md:top-12 md:w-[360px]">
             <div className="flex items-center justify-between border-b border-line px-4 py-3">
               <span className="font-extrabold text-ink">{t('common.notifications')}</span>
               {unread > 0 && (
@@ -47,14 +48,15 @@ export function NotificationBell({ base, dark }: { base: string; dark?: boolean 
               {!data?.data.length && <p className="px-4 py-8 text-center text-sm text-muted">{t('notif.empty')}</p>}
               {data?.data.map((n) => {
                 const I = notifIcon(n.type);
+                const tx = localizeNotif(n, t);
                 return (
                   <Link key={n.id} to={n.link ?? `${base}/notifications`} onClick={() => (setOpen(false), !n.readAt && post(`/notifications/${n.id}/read`).then(() => qc.invalidateQueries({ queryKey: ['notifications'] })))} className={cn('flex gap-3 px-4 py-3 hover:bg-brand-50/60', !n.readAt && 'bg-brand-50/40')}>
                     <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-brand-100 text-brand-700">
                       <I className="h-4 w-4" />
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-bold text-ink">{n.title}</span>
-                      {n.body && <span className="block truncate text-xs text-muted">{n.body}</span>}
+                      <span className="block text-sm font-bold text-ink">{tx.title}</span>
+                      {tx.body && <span className="block truncate text-xs text-muted">{tx.body}</span>}
                       <span className="text-[11px] text-muted">{relative(n.createdAt, locale)}</span>
                     </span>
                     {!n.readAt && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand-600" />}

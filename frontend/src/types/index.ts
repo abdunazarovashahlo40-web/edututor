@@ -20,6 +20,9 @@ export interface Me {
   role: Role;
   status: string;
   locale: 'uz' | 'ru' | 'en';
+  emailVerifiedAt?: string | null;
+  createdAt?: string;
+  notifyPrefs?: { email?: boolean; reminders?: boolean; messages?: boolean; marketing?: boolean } | null;
   studentProfile?: { grade?: string | null; goals?: string | null; city?: string | null } | null;
   teacherProfile?: { id: string; verification: 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED'; verificationNote?: string | null; hourlyPrice: string } | null;
   appLock: { locked: boolean; deviceId: string | null; hasPin: boolean; hasBiometric: boolean; idleLockMinutes: number };

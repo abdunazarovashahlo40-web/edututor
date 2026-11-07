@@ -56,6 +56,34 @@ publicRouter.get(
   }),
 );
 
+/** Bosh sahifa uchun haqiqiy sharhlar (faqat izohli, yashirilmagan, 4–5 yulduz) — o'ylab topilgan "otzivlar" emas */
+publicRouter.get(
+  '/reviews',
+  ah(async (_req, res) => {
+    const items = await prisma.review.findMany({
+      where: { isHidden: false, rating: { gte: 4 }, comment: { not: null } },
+      orderBy: [{ rating: 'desc' }, { createdAt: 'desc' }],
+      take: 6,
+      select: {
+        id: true,
+        rating: true,
+        comment: true,
+        createdAt: true,
+        student: { select: { fullName: true, avatarUrl: true } },
+        teacher: { select: { id: true, user: { select: { fullName: true } } } },
+      },
+    });
+    res.set('Cache-Control', 'public, max-age=300');
+    ok(
+      res,
+      items
+        .filter((r) => (r.comment ?? '').trim().length >= 10)
+        .slice(0, 3)
+        .map((r) => ({ ...r, student: { name: r.student.fullName.split(' ').map((p, i) => (i === 0 ? p : `${p[0]}.`)).join(' '), avatarUrl: r.student.avatarUrl } })),
+    );
+  }),
+);
+
 /**
  * Ota-ona sahifasi: o'quvchi ulashgan havola orqali (login talab qilinmaydi) faqat o'qiladigan natijalar.
  * Kontakt ma'lumotlari, to'lovlar va xabarlar ko'rsatilmaydi.

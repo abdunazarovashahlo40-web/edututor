@@ -81,10 +81,10 @@ export default function StudentDashboard() {
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <StatCard icon={<Trophy className="h-5 w-5" />} label={t('student.completedLessons')} value={stats.data?.completedLessons ?? '—'} />
-        <StatCard icon={<Timer className="h-5 w-5" />} label={t('student.hours')} value={stats.data?.hours ?? '—'} tone="blue" />
-        <StatCard icon={<BookOpenCheck className="h-5 w-5" />} label={t('menu.homework')} value={stats.data ? `${stats.data.homework.done}/${stats.data.homework.total}` : '—'} tone="green" />
-        <StatCard icon={<CalendarDays className="h-5 w-5" />} label={t('student.upcoming')} value={stats.data?.upcoming ?? '—'} tone="amber" />
+        <StatCard to="/student/lessons?tab=past" icon={<Trophy className="h-5 w-5" />} label={t('student.completedLessons')} value={stats.data?.completedLessons ?? '—'} />
+        <StatCard to="/student/progress" icon={<Timer className="h-5 w-5" />} label={t('student.hours')} value={stats.data?.hours ?? '—'} tone="blue" />
+        <StatCard to="/student/homework" icon={<BookOpenCheck className="h-5 w-5" />} label={t('menu.homework')} value={stats.data ? `${stats.data.homework.done}/${stats.data.homework.total}` : '—'} tone="green" />
+        <StatCard to="/student/lessons" icon={<CalendarDays className="h-5 w-5" />} label={t('student.upcoming')} value={stats.data?.upcoming ?? '—'} tone="amber" />
       </div>
 
       {/* haftalik jadval */}
